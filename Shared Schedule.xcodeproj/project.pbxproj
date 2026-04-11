@@ -30,9 +30,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EFD1CA602F5408B000B59468 /* Shared Schedule */ = {
+		EFD1CA602F5408B000B59468 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Shared Schedule";
+			path = App;
 			sourceTree = "<group>";
 		};
 		EFD1CA6E2F5408B100B59468 /* Shared ScheduleTests */ = {
@@ -75,7 +75,7 @@
 		EFD1CA552F5408B000B59468 = {
 			isa = PBXGroup;
 			children = (
-				EFD1CA602F5408B000B59468 /* Shared Schedule */,
+				EFD1CA602F5408B000B59468 /* App */,
 				EFD1CA6E2F5408B100B59468 /* Shared ScheduleTests */,
 				EFD1CA782F5408B100B59468 /* Shared ScheduleUITests */,
 				EFD1CA5F2F5408B000B59468 /* Products */,
@@ -108,7 +108,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				EFD1CA602F5408B000B59468 /* Shared Schedule */,
+				EFD1CA602F5408B000B59468 /* App */,
 			);
 			name = "Shared Schedule";
 			packageProductDependencies = (
