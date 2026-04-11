@@ -20,6 +20,14 @@ can self-book lessons.
 | **Localization** | zh-Hant + en (zh-Hant default) |
 | **Current stage** | Foundation. Color/theme design system complete. No business logic, no backend, no tests yet. |
 
+**Roadmap** (known but mostly unimplemented — Domain modeling and Supabase
+schema should leave room for these):
+
+- **MVP**: teacher-owned schedules, invite links, student self-booking,
+  read-only visibility of other students' booked slots (time only, no PII)
+- **Mid-term**: comments on bookings / schedules, schedule import, friends
+- **Long-term**: course discovery, teacher discovery
+
 ---
 
 ## 2. How to Use This Document
