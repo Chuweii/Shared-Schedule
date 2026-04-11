@@ -26,19 +26,19 @@ nonisolated struct Schedule: Sendable {
         id: AvailabilityWindowID = AvailabilityWindowID(),
         start: Date,
         end: Date
-    ) throws {
+    ) throws(ScheduleError) {
         guard end > start else {
-            throw ScheduleError.invalidRange
+            throw .invalidRange
         }
 
         let duration = end.timeIntervalSince(start)
         guard duration >= minWindowDuration else {
-            throw ScheduleError.belowMinimumDuration
+            throw .belowMinimumDuration
         }
 
         for existing in windows {
             if start < existing.end && existing.start < end {
-                throw ScheduleError.overlapping
+                throw .overlapping
             }
         }
 
