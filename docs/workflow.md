@@ -17,7 +17,7 @@ New features MUST follow this three-stage flow:
 ```
 Stage 1 — Plan (inside plan mode)
 Stage 2 — Feature Doc (Chinese)
-Stage 3 — TDD Implementation (UI first, then test-first logic)
+Stage 3 — TDD Implementation (tests first, then polished UI)
 ```
 
 Skipping stages — especially jumping from a feature request straight to
@@ -198,24 +198,45 @@ to change, **go back to plan mode** — don't edit silently.
 
 ## Stage 3 — TDD Implementation
 
-Implement **one screen at a time, end-to-end**. Do not pre-build shared
-components for screens you haven't reached yet.
+Implement **one feature slice at a time, end-to-end**. A slice is
+Domain → Usecase → ViewModel → View. Do not pre-build shared components
+for slices you haven't reached yet.
 
-For each screen:
+For each slice, the **strict order** is:
 
-1. **UI first** — build the SwiftUI `View` with placeholder state, so the
-   user can sanity-check the visuals immediately. Use `#Preview` heavily.
-2. **Then TDD the ViewModel** (and Domain / Usecase code it depends on):
+1. **TDD the Domain** (if the slice introduces new aggregate behavior):
    - **Red**: write the failing test for one scenario from `scenarios.md`
      (see `docs/testing.md` for the exact format)
    - **Green**: write the minimum code to pass
    - **Refactor**: clean up while tests stay green
-3. Move to the next scenario. Repeat until the screen is complete.
-4. Move to the next screen.
+2. **TDD the Usecase** (same red → green → refactor rhythm, one scenario
+   at a time)
+3. **TDD the ViewModel** (same rhythm). Every scenario in `scenarios.md`
+   maps 1:1 to a `@Test` function name.
+4. **Build the polished SwiftUI `View`** against the now-stable
+   ViewModel state. Use `#Preview` heavily. Because the VM is green, the
+   View can be final-quality on first pass — no placeholder bindings,
+   no guessed state shapes, no rework when logic lands.
+5. **Run the app end-to-end** in the simulator to sanity-check visuals
+   and interactions against the approved spec.
+6. Move to the next slice.
 
-**Why UI first**: the user can sanity-check the design without waiting for
-logic. **Why TDD per scenario**: scenario titles map 1:1 to test names, so
-progress is visible in the test output.
+**Why tests before UI**: designing UI against a real, stable ViewModel
+state produces higher-polish first passes than designing against
+placeholder data. The VM's exact properties, error shapes, and async
+behavior are known before the first `Text(...)` is written, so the View
+can be bound correctly on day one.
+
+**Exception — with a design reference**: if the feature ships with a
+Figma / Sketch / design spec, you MAY prototype the View early (with
+placeholder state) to validate the design against the spec before
+starting TDD. The polished final View still comes after the VM is
+green. For **design-free greenfield features** (the default in this
+repo today), no early UI prototyping — go straight to Domain TDD.
+
+**Why TDD per scenario**: scenario titles in `scenarios.md` map 1:1 to
+test function names, so progress is visible in the test output and any
+reader can grep from doc to test in either direction.
 
 ---
 

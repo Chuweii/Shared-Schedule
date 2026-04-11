@@ -49,13 +49,18 @@ form; the function name is the camelCase form of the same scenario.
 
 ## 3. TDD pacing
 
-- **UI prototype phase** (laying out SwiftUI screens, exploring interactions,
-  tweaking layout) — tests are **not** required. Iterate freely on previews.
-- **Once you enter Domain / Usecase / Infrastructure** — **test-first**.
-  Red → green → refactor. No exceptions.
-- **ViewModel logic** (state transitions, error mapping, intent handling) —
-  also test-first.
-- **Pure View snapshot tests** are not required. ViewModels MUST be covered.
+- **Domain / Usecase / Infrastructure / ViewModel logic** — **test-first**,
+  no exceptions. Red → green → refactor, one scenario at a time.
+- **SwiftUI View construction happens AFTER the ViewModel is green.**
+  See `docs/workflow.md` Stage 3 for the full slice ordering. The only
+  exception is when a design reference exists (Figma / Sketch) and you
+  want to validate design fidelity early — in that case an early
+  prototype is allowed, but the polished final View still lands after
+  the VM is green.
+- **Pure layout work** (view composition, `#Preview`, spacing / typography
+  tweaks, `@State` for purely local UI concerns) does not require tests.
+  Iterate freely on previews once the underlying VM is stable.
+- **Pure View snapshot tests are not required.** ViewModels MUST be covered.
 
 ---
 
