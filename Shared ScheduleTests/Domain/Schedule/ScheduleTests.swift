@@ -106,4 +106,146 @@ struct ScheduleTests {
         #expect(schedule.windows.count == 1)
         #expect(schedule.windows[0].duration == 1800)
     }
+
+    // MARK: - 新增 window range 錯誤
+
+    @Test("新增 start 等於 end 的 window 應 throw invalidRange")
+    func addWindow_startEqualsEnd_throwsInvalidRange() {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let t = Date(timeIntervalSince1970: 1_700_000_000)
+
+        // When / Then
+        #expect(throws: ScheduleError.invalidRange) {
+            try schedule.addWindow(start: t, end: t)
+        }
+        #expect(schedule.windows.isEmpty)
+    }
+
+    @Test("新增 start 晚於 end 的 window 應 throw invalidRange")
+    func addWindow_startAfterEnd_throwsInvalidRange() {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let later = Date(timeIntervalSince1970: 1_700_000_000).addingTimeInterval(3600)
+        let earlier = Date(timeIntervalSince1970: 1_700_000_000)
+
+        // When / Then
+        #expect(throws: ScheduleError.invalidRange) {
+            try schedule.addWindow(start: later, end: earlier)
+        }
+        #expect(schedule.windows.isEmpty)
+    }
+
+    // MARK: - 新增 window 長度錯誤
+
+    @Test("新增短於最短時段長度的 window 應 throw belowMinimumDuration")
+    func addWindow_belowMinimumDuration_throwsBelowMinimumDuration() {
+        // Given
+        var schedule = Schedule(
+            ownerID: UserID("teacher-001"),
+            title: "瑜珈初階",
+            minWindowDuration: 3600
+        )
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let end = start.addingTimeInterval(3540) // 59 分鐘
+
+        // When / Then
+        #expect(throws: ScheduleError.belowMinimumDuration) {
+            try schedule.addWindow(start: start, end: end)
+        }
+        #expect(schedule.windows.isEmpty)
+    }
+
+    // MARK: - 新增 window 重疊錯誤
+
+    @Test("新增與既有 window 部分重疊於右的 window 應 throw overlapping")
+    func addWindow_partialOverlapRight_throwsOverlapping() throws {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let t14 = Date(timeIntervalSince1970: 1_700_000_000)
+        let t15 = t14.addingTimeInterval(3600)
+        let t1430 = t14.addingTimeInterval(1800)
+        let t1530 = t15.addingTimeInterval(1800)
+        try schedule.addWindow(start: t14, end: t15)
+
+        // When / Then
+        #expect(throws: ScheduleError.overlapping) {
+            try schedule.addWindow(start: t1430, end: t1530)
+        }
+        #expect(schedule.windows.count == 1)
+    }
+
+    @Test("新增與既有 window 部分重疊於左的 window 應 throw overlapping")
+    func addWindow_partialOverlapLeft_throwsOverlapping() throws {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let t14 = Date(timeIntervalSince1970: 1_700_000_000)
+        let t15 = t14.addingTimeInterval(3600)
+        let t1330 = t14.addingTimeInterval(-1800)
+        let t1430 = t14.addingTimeInterval(1800)
+        try schedule.addWindow(start: t14, end: t15)
+
+        // When / Then
+        #expect(throws: ScheduleError.overlapping) {
+            try schedule.addWindow(start: t1330, end: t1430)
+        }
+        #expect(schedule.windows.count == 1)
+    }
+
+    @Test("新增完全包在既有 window 內部的 window 應 throw overlapping")
+    func addWindow_nestedInside_throwsOverlapping() throws {
+        // Given
+        var schedule = Schedule(
+            ownerID: UserID("teacher-001"),
+            title: "瑜珈初階",
+            minWindowDuration: 900 // 15 分鐘，才塞得下 30 分鐘的 nested window
+        )
+        let t14 = Date(timeIntervalSince1970: 1_700_000_000)
+        let t15 = t14.addingTimeInterval(3600)
+        let t1415 = t14.addingTimeInterval(900)
+        let t1445 = t14.addingTimeInterval(2700)
+        try schedule.addWindow(start: t14, end: t15)
+
+        // When / Then
+        #expect(throws: ScheduleError.overlapping) {
+            try schedule.addWindow(start: t1415, end: t1445)
+        }
+        #expect(schedule.windows.count == 1)
+    }
+
+    @Test("新增完全包住既有 window 的 window 應 throw overlapping")
+    func addWindow_nestedContains_throwsOverlapping() throws {
+        // Given
+        var schedule = Schedule(
+            ownerID: UserID("teacher-001"),
+            title: "瑜珈初階",
+            minWindowDuration: 900
+        )
+        let t14 = Date(timeIntervalSince1970: 1_700_000_000)
+        let t15 = t14.addingTimeInterval(3600)
+        let t1415 = t14.addingTimeInterval(900)
+        let t1445 = t14.addingTimeInterval(2700)
+        try schedule.addWindow(start: t1415, end: t1445)
+
+        // When / Then
+        #expect(throws: ScheduleError.overlapping) {
+            try schedule.addWindow(start: t14, end: t15)
+        }
+        #expect(schedule.windows.count == 1)
+    }
+
+    @Test("新增與既有 window 時間完全相同的 window 應 throw overlapping")
+    func addWindow_exactDuplicate_throwsOverlapping() throws {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let t14 = Date(timeIntervalSince1970: 1_700_000_000)
+        let t15 = t14.addingTimeInterval(3600)
+        try schedule.addWindow(start: t14, end: t15)
+
+        // When / Then
+        #expect(throws: ScheduleError.overlapping) {
+            try schedule.addWindow(start: t14, end: t15)
+        }
+        #expect(schedule.windows.count == 1)
+    }
 }
