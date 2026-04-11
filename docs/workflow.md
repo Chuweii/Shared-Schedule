@@ -72,12 +72,47 @@ Scenario: AuthRepository.sendVerificationCode 回傳 403
 
 ### 1b. Map each scenario to its implementation
 
-For every scenario above, the plan MUST include:
+For every scenario above, the plan MUST cover **three groups** of
+questions. Missing any group is a reason to stay in plan mode.
 
-- Which files will be created or changed (path level)
+#### Domain modeling
+
+This is where the feature's business rules are pinned down. Don't skip it
+— Domain is grown just-in-time per feature, so the plan is the place
+every new piece of the Domain first gets designed.
+
+- **Aggregate**: which aggregate does this scenario live in? Is it a new
+  aggregate or an extension of an existing one?
+- **Root + internals**: what is the aggregate root, and which Entities /
+  Value Objects live inside it?
+- **Invariants**: what rules MUST always be true for this aggregate to
+  be in a valid state? (e.g. 「同一 Schedule 的 AvailabilityWindow 不能
+  重疊」, 「只有 owner 可以修改」.) Every invariant typically becomes
+  one success scenario **and** one failure scenario.
+- **Open product questions**: anything that is a business decision, not
+  a technical decision — minimum durations, cross-midnight behavior,
+  edge cases. Ask the user; never guess.
+
+> **Glossary (short form — full explanation lives in `docs/architecture.md`)**
+> - *Aggregate*: a cluster of Domain objects that change together, with
+>   one **root** as the only legal entry point. External code never
+>   bypasses the root to touch internals.
+> - *Invariant*: a rule that MUST always hold after any operation on the
+>   aggregate. The root's methods exist to enforce these rules.
+
+#### Files & boundaries
+
+- Which files will be created or changed (path level), split by layer
+  (`Domain/` / `Usecase/` / `Infrastructure/` / `Presentation/`)
+- Which Usecase(s) orchestrate the scenario
+- Which ViewModel owns the screen state and intent handling
+
+#### Data flow
+
 - Which Repository method / Supabase table / Edge Function the scenario
-  hits — or「mock data — backend not ready」
-- Which test case the scenario produces
+  hits — or「mock data — backend not ready」(see `docs/backend.md`)
+- Which test case the scenario produces (test function name mirrors
+  scenario title; see `docs/testing.md`)
 - Any open questions blocking implementation
 
 ### 1c. Propose phasing (if scope is large)
