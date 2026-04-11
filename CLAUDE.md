@@ -127,8 +127,10 @@ the docs in §3 explain *how*.
    See `docs/testing.md`.
 
 5. **MUST** test-first (TDD red → green → refactor) for Domain, Usecase,
-   Infrastructure, and ViewModel logic. UI prototype phase (SwiftUI layout
-   work) does not require tests.
+   Infrastructure, and ViewModel logic. **Build the SwiftUI View *after*
+   the ViewModel is test-green**, not before; pure layout work (view
+   composition, `#Preview`, styling, local `@State`) does not require
+   tests. See `docs/workflow.md` Stage 3.
 
 6. **MUST** wrap `SupabaseClient` inside `App/Infrastructure/Supabase/`.
    The `Supabase` import must not appear anywhere else in the codebase.
