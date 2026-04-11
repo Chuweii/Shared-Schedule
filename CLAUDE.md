@@ -121,9 +121,13 @@ the docs in §3 explain *how*.
    `test` / `docs`. **NEVER** `--no-verify`. **NEVER** force-push to `main`.
    **NEVER** create a commit unless the user has explicitly asked.
 
-9. **NEVER** add a Swift package dependency, change the Xcode project
-   settings, modify deployment target, or touch secrets without explicit
-   user approval.
+9. **MAY** add new Swift source files (`.swift`) to the Xcode project as
+   part of feature work — creating them inside appropriate targets is
+   fine. **NEVER** add a Swift package dependency, change build settings,
+   modify deployment target, modify signing / capabilities, edit resource
+   build phases, or touch secrets without explicit user approval. When
+   uncertain whether a change counts as "adding a source file" vs
+   "editing project settings", **ask first**.
 
 10. **NEVER** "match the surrounding style" if that style violates these
     rules. Flag the inconsistency to the user instead.
@@ -154,8 +158,12 @@ the docs in §3 explain *how*.
 - ❌ Tests without Given / When / Then structure (in both name and body)
 - ❌ Reference primitive colors directly from a `View`
 - ❌ Hard-coded user-facing strings — must go through String Catalog
-- ❌ Add a Swift package dependency, edit `Package.swift`, change deployment
-  target, or commit secrets without explicit user approval
+- ❌ Add a Swift package dependency, change build settings, deployment
+  target, signing / capabilities, resource build phases, or commit
+  secrets without explicit user approval
+- ❌ Add files *other than* Swift source files (`.swift`) to an Xcode
+  target without asking — images, JSON, plists, markdown, etc. all
+  need user approval
 - ❌ "Matching surrounding style" when that style violates the Golden Rules
 - ❌ Refactoring code unrelated to the user's request
 - ❌ Inventing helpers / abstractions / configuration that weren't asked for
