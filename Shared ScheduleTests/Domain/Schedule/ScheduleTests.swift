@@ -248,4 +248,54 @@ struct ScheduleTests {
         }
         #expect(schedule.windows.count == 1)
     }
+
+    // MARK: - 刪除 window
+
+    @Test("刪除既有 window 後 windows 為空")
+    func removeWindow_existing_leavesEmptyList() throws {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let windowID = AvailabilityWindowID()
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let end = start.addingTimeInterval(3600)
+        try schedule.addWindow(id: windowID, start: start, end: end)
+
+        // When
+        schedule.removeWindow(id: windowID)
+
+        // Then
+        #expect(schedule.windows.isEmpty)
+    }
+
+    @Test("刪除不存在的 window id 為 no-op 且不 throw")
+    func removeWindow_nonExistentID_isNoOp() {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let someID = AvailabilityWindowID()
+
+        // When
+        schedule.removeWindow(id: someID)
+
+        // Then
+        #expect(schedule.windows.isEmpty)
+    }
+
+    @Test("刪除 window 後以相同時段重新加入應成功")
+    func removeWindow_thenReAddSameRange_succeeds() throws {
+        // Given
+        var schedule = Schedule(ownerID: UserID("teacher-001"), title: "瑜珈初階")
+        let windowID = AvailabilityWindowID()
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let end = start.addingTimeInterval(3600)
+        try schedule.addWindow(id: windowID, start: start, end: end)
+        schedule.removeWindow(id: windowID)
+
+        // When
+        try schedule.addWindow(start: start, end: end)
+
+        // Then
+        #expect(schedule.windows.count == 1)
+        #expect(schedule.windows[0].start == start)
+        #expect(schedule.windows[0].end == end)
+    }
 }

@@ -44,4 +44,8 @@ nonisolated struct Schedule: Sendable {
 
         windows.append(AvailabilityWindow(id: id, start: start, end: end))
     }
+
+    mutating func removeWindow(id: AvailabilityWindowID) {
+        windows.removeAll { $0.id == id }
+    }
 }
