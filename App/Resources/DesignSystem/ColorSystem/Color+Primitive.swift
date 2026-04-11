@@ -22,12 +22,27 @@ extension ShapeStyle where Self == Color {
     static var gray1000: Color { .gray1000 }
     static var blue500: Color { .blue500 }
     static var blue50: Color { .blue50 }
+    static var blue300: Color { .blue300 }
+    static var blue700: Color { .blue700 }
+    static var blue800: Color { .blue800 }
+    static var blue900: Color { .blue900 }
     static var green500: Color { .green500 }
     static var green50: Color { .green50 }
+    static var green300: Color { .green300 }
+    static var green600: Color { .green600 }
+    static var green700: Color { .green700 }
+    static var green800: Color { .green800 }
+    static var green900: Color { .green900 }
     static var orange500: Color { .orange500 }
     static var orange50: Color { .orange50 }
     static var red500: Color { .red500 }
     static var red50: Color { .red50 }
+    static var purple50: Color { .purple50 }
+    static var purple300: Color { .purple300 }
+    static var purple500: Color { .purple500 }
+    static var purple700: Color { .purple700 }
+    static var purple800: Color { .purple800 }
+    static var purple900: Color { .purple900 }
     static var mask70: Color { .mask70 }
     static var mask30: Color { .mask30 }
 }
@@ -64,12 +79,30 @@ extension Color {
     // MARK: - Secondary Color
 
     static let blue500 = Color(hex: "#0080FF")
-    
+
     static let blue50 = Color(hex: "#F5F9FF")
+
+    static let blue300 = Color(hex: "#7FB5E8")
+
+    static let blue700 = Color(hex: "#0E3759")
+
+    static let blue800 = Color(hex: "#0A2540")
+
+    static let blue900 = Color(hex: "#051628")
     
     static let green500 = Color(hex: "#1AAD19")
-    
+
     static let green50 = Color(hex: "#F6FFF9")
+
+    static let green300 = Color(hex: "#8FC5A8")
+
+    static let green600 = Color(hex: "#0F7A3A")
+
+    static let green700 = Color(hex: "#1B4D2E")
+
+    static let green800 = Color(hex: "#0F2E1C")
+
+    static let green900 = Color(hex: "#061710")
 
     static let orange500 = Color(hex: "#FA9E14")
 
@@ -78,6 +111,18 @@ extension Color {
     static let red500 = Color(hex: "#DD4B39")
 
     static let red50 = Color(hex: "#FFF5F3")
+
+    static let purple50 = Color(hex: "#F4F1FF")
+
+    static let purple300 = Color(hex: "#B8A5F0")
+
+    static let purple500 = Color(hex: "#7C5CFF")
+
+    static let purple700 = Color(hex: "#2E1A4F")
+
+    static let purple800 = Color(hex: "#1E0E3E")
+
+    static let purple900 = Color(hex: "#120628")
 
     // MARK: - Mask
 
