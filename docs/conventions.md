@@ -51,7 +51,11 @@
 
 - All user-facing strings go through **String Catalog (`.xcstrings`)**.
 - **Hard-coded user-facing strings are not allowed**, even in prototypes.
-- Default catalog languages: `zh-Hant` (default) + `en`.
+- Catalog languages: `zh-Hant` (default) + `en` + `ja`.
+- **Every new user-facing string must be added to all three locales
+  before the feature is considered complete.** Leaving a string
+  untranslated in `en` or `ja` counts as an unfinished feature, not a
+  follow-up task.
 - Use the key as plain English text (Apple's recommended pattern), not
   symbolic IDs.
 
@@ -95,6 +99,6 @@ progress unless explicitly asked**.
 - [ ] Screenshots — 6.7" / 6.1" / iPad
 - [ ] Accessibility — Dynamic Type, VoiceOver labels, color contrast
 - [ ] Dark Mode — covered by the existing theme system
-- [ ] Localization — at minimum zh-Hant + en
+- [ ] Localization — zh-Hant + en + ja (all three required before ship)
 - [ ] Crash reporting — MetricKit or Sentry
 - [ ] App Store Connect metadata, keywords, age rating, export compliance

@@ -17,16 +17,36 @@ can self-book lessons.
 | **Goal** | Ship to the App Store. Quality bar is store-ready, not weekend prototype. |
 | **Tech stack** | SwiftUI · Swift Testing · Supabase |
 | **Deployment target** | iOS 26.0 (modern APIs like `@Observable`, Swift Testing, String Catalogs are all in scope) |
-| **Localization** | zh-Hant + en (zh-Hant default) |
+| **Localization** | zh-Hant (default) + en + ja |
 | **Current stage** | Foundation. Color/theme design system complete. No business logic, no backend, no tests yet. |
 
-**Roadmap** (known but mostly unimplemented — Domain modeling and Supabase
-schema should leave room for these):
+**Roadmap — product scope** (known but mostly unimplemented — Domain
+modeling and Supabase schema should leave room for these):
 
 - **MVP**: teacher-owned schedules, invite links, student self-booking,
   read-only visibility of other students' booked slots (time only, no PII)
 - **Mid-term**: comments on bookings / schedules, schedule import, friends
 - **Long-term**: course discovery, teacher discovery
+
+**Roadmap — development phases** (order in which we actually build):
+
+1. **Phase 1 — Mock MVP feature 1.** Build "Teacher creates Schedule +
+   AvailabilityWindow" end-to-end against an in-memory repository and a
+   fake `CurrentUserProvider`. No Supabase, no auth. Goal: prove the
+   three-stage workflow and stabilize the `Schedule` aggregate design.
+2. **Phase 2 — Backend + Auth integration.** User does Supabase project
+   setup and hands over keys. Claude writes `supabase init`, the first
+   migration + RLS for `schedules`, `SupabaseScheduleRepository`,
+   `SupabaseAuthCurrentUserProvider`, and a login flow (Sign in with Apple
+   first, then Google, then Facebook — all via Supabase Auth). Feature 1
+   is migrated from mock to real (swap two Infrastructure classes, no
+   Domain/ViewModel/test changes).
+3. **Phase 3 — Remaining MVP features on real backend.** Invitation /
+   Membership → Student booking → visibility of other students' booked
+   slots. Every new feature lives on real Supabase + real auth + real
+   RLS from day one, no mock-to-real migrations.
+4. **Phase 4 — App Store readiness.** Run through `docs/conventions.md`
+   §7 checklist, write privacy manifest, ship.
 
 ---
 
@@ -142,7 +162,7 @@ the docs in §3 explain *how*.
 | Feature docs under `docs/features/<feature-name>/` (`spec.md`, `scenarios.md`, `api.md`) | **Traditional Chinese (zh-Hant)** |
 | Plan files under `~/.claude/plans/` | **Traditional Chinese (zh-Hant)** |
 | In-conversation discussion with the user | **Traditional Chinese (zh-Hant)** |
-| User-facing strings in the app | **zh-Hant + en** via String Catalog |
+| User-facing strings in the app | **zh-Hant (default) + en + ja** via String Catalog |
 | Code identifiers, comments, commit messages | **English** |
 
 ---
