@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-public protocol SemanticColorProtocol {
+public protocol SemanticColorProtocol: Sendable {
     // MARK: - Text
 
     var textPrimary: Color { get }
