@@ -3,8 +3,10 @@ import SwiftUI
 struct ScheduleListView: View {
     @Environment(\.theme) private var theme
     @State private var viewModel: ScheduleListViewModel
+    private let dependencies: AppDependencies
 
     init(dependencies: AppDependencies) {
+        self.dependencies = dependencies
         self.viewModel = ScheduleListViewModel(
             createScheduleUseCase: dependencies.createScheduleUseCase,
             listSchedulesUseCase: dependencies.listSchedulesUseCase
@@ -56,7 +58,11 @@ struct ScheduleListView: View {
 
     private var listView: some View {
         List(viewModel.schedules, id: \.id) { schedule in
-            scheduleRow(schedule)
+            NavigationLink {
+                ScheduleDetailView(schedule: schedule, dependencies: dependencies)
+            } label: {
+                scheduleRow(schedule)
+            }
         }
     }
 

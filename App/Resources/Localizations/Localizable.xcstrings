@@ -236,6 +236,214 @@
         }
       }
     },
+    "還沒有時段" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Time Slots Yet"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タイムスロットがありません"
+          }
+        }
+      }
+    },
+    "新增可預約時段，讓學生知道你何時有空" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add available time slots so students know when you're free"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予約可能な時間枠を追加して、生徒にあなたの空き時間を知らせましょう"
+          }
+        }
+      }
+    },
+    "新增時段" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Time Slot"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スロット追加"
+          }
+        }
+      }
+    },
+    "開始時間" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Time"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始時刻"
+          }
+        }
+      }
+    },
+    "開始" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始"
+          }
+        }
+      }
+    },
+    "結束時間" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End Time"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "終了時刻"
+          }
+        }
+      }
+    },
+    "結束" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "終了"
+          }
+        }
+      }
+    },
+    "新增" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "追加"
+          }
+        }
+      }
+    },
+    "時段與既有時段重疊" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This time slot overlaps with an existing one"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "既存のスロットと重複しています"
+          }
+        }
+      }
+    },
+    "時段長度不得短於最短時段設定" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slot duration must meet the minimum requirement"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スロットの長さが最短設定を下回っています"
+          }
+        }
+      }
+    },
+    "結束時間必須晚於開始時間" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End time must be after start time"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "終了時刻は開始時刻より後でなければなりません"
+          }
+        }
+      }
+    },
+    "無權限修改此課表" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You don't have permission to edit this schedule"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このスケジュールを編集する権限がありません"
+          }
+        }
+      }
+    },
+    "找不到此課表" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule not found"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スケジュールが見つかりません"
+          }
+        }
+      }
+    },
     "還沒有課表" : {
       "localizations" : {
         "en" : {
