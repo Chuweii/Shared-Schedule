@@ -39,14 +39,67 @@
 
 ---
 
-## 3. Local-first workflow
+## 3. Environment separation
 
-- `supabase start` brings up the local stack (Postgres, Auth, Storage,
-  Realtime, Studio)
-- Migrations live under `supabase/migrations/` (created when the first
-  migration is written)
+Three environments, each with its own Supabase instance:
+
+| Environment | What it connects to | Purpose |
+|---|---|---|
+| **Local** | `supabase start` on your Mac (`localhost:54321`) | Daily development + TDD integration tests |
+| **Staging** | Cloud project 1 (`xxx-staging.supabase.co`) | Cross-device testing, demos, CI |
+| **Production** | Cloud project 2 (`xxx-prod.supabase.co`) | App Store release, real users |
+
+### How the app switches environments
+
+Xcode build configurations + `.xcconfig` files:
+
+```
+// Debug.xcconfig (local dev — gitignored)
+SUPABASE_URL = http://localhost:54321
+SUPABASE_ANON_KEY = local-anon-key
+
+// Staging.xcconfig (gitignored)
+SUPABASE_URL = https://xxx-staging.supabase.co
+SUPABASE_ANON_KEY = staging-anon-key
+
+// Release.xcconfig (gitignored)
+SUPABASE_URL = https://xxx-prod.supabase.co
+SUPABASE_ANON_KEY = prod-anon-key
+```
+
+App reads `Bundle.main.infoDictionary["SUPABASE_URL"]` at runtime.
+**Production keys never appear in development or test flows.**
+
+### Which tests connect to what
+
+| Test layer | Connects to | Why |
+|---|---|---|
+| Domain / UseCase / VM tests | **Nothing** — `InMemoryScheduleRepository` | Pure logic, no I/O. These 66+ tests stay fast and offline forever. |
+| Infrastructure integration tests | **Local stack** (`supabase start`) | Verify migrations, RLS policies, DTO mapping against real Postgres. |
+| UI manual testing / demo | **Staging** (cloud) | Persistent data, multi-device, shareable with reviewers. |
+
+### Setup timeline
+
+**Now (one-time, before Phase 2):**
+1. Install Docker Desktop (local stack needs it)
+2. `brew install supabase/tap/supabase`
+3. `supabase login`
+4. Create Supabase account + **staging** project → hand over keys
+5. Add `supabase-swift` package in Xcode
+
+**Later (before App Store submission):**
+6. Create **production** project → hand over keys
+7. Review + `supabase db push` to production
+
+### Local-first workflow
+
+- `supabase start` brings up the full local stack (Postgres, Auth,
+  Storage, Realtime, Studio dashboard at `localhost:54323`)
+- `supabase db reset` wipes and re-runs all migrations + seed data
+- Migrations live under `supabase/migrations/`
 - Seed data lives in `supabase/seed.sql`
-- Schema-change flow: write migration SQL → verify locally → review → push
+- Schema-change flow: write migration → verify locally → review →
+  push to staging → verify → push to production
 
 ---
 
@@ -76,9 +129,13 @@
 
 ## 6. Auth
 
-- **Sign in with Apple** (App Store requires it whenever any third-party
-  login is offered)
-- **Email magic link** as a fallback
+- **Sign in with Apple** (first — App Store requires it when offering
+  any third-party login)
+- **Google Sign-in** (second — Supabase OAuth built-in)
+- **Facebook Sign-in** (third — Meta review process can be slow, do
+  last)
+- All three go through **Supabase Auth** — the app never handles
+  tokens or OAuth flows directly.
 - Identity is per-user, but role (teacher / student) is
   **per-Membership**, not stored on the auth user. See
   `docs/architecture.md` §3.
