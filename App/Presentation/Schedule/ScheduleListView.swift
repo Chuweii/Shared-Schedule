@@ -59,7 +59,7 @@ struct ScheduleListView: View {
     private var listView: some View {
         List(viewModel.schedules, id: \.id) { schedule in
             NavigationLink {
-                ScheduleDetailView(schedule: schedule, dependencies: dependencies)
+                ScheduleCalendarView(schedule: schedule)
             } label: {
                 scheduleRow(schedule)
             }
