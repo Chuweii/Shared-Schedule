@@ -27,6 +27,13 @@ final class ScheduleListViewModel {
         }
     }
 
+    func didCancelCreate() {
+        isCreateSheetPresented = false
+        inlineError = nil
+        titleDraft = ""
+        minDurationDraft = Schedule.defaultMinWindowDuration
+    }
+
     func didConfirmCreate() async {
         do {
             let newSchedule = try await createScheduleUseCase.createSchedule(

@@ -1,20 +1,17 @@
-//
-//  ContentView.swift
-//  Shared Schedule
-//
-//  Created by Wei Chu  on 2026/3/1.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    let dependencies: AppDependencies
+
     var body: some View {
-        ThemeSettingsView()
+        NavigationStack {
+            ScheduleListView(dependencies: dependencies)
+        }
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(dependencies: .live)
         .environment(\.theme, ClassicTheme())
         .environment(ThemeManager())
 }
