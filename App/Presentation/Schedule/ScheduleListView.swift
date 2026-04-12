@@ -72,11 +72,43 @@ struct ScheduleListView: View {
                 .font(.headline)
                 .foregroundStyle(theme.textPrimary)
 
-            Text("每堂最短 \(Int(schedule.minWindowDuration / 60)) 分鐘")
-                .font(.subheadline)
-                .foregroundStyle(theme.textSecondary)
+            if schedule.rules.isEmpty {
+                Text("每堂最短 \(Int(schedule.minWindowDuration / 60)) 分鐘")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            } else {
+                Text(ruleSummary(schedule))
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            }
         }
         .padding(.vertical, 4)
+    }
+
+    private func ruleSummary(_ schedule: Schedule) -> String {
+        let weekdayNames = schedule.rules
+            .sorted { $0.weekday.rawValue < $1.weekday.rawValue }
+            .map { weekdayShortName($0.weekday) }
+            .joined(separator: "、")
+
+        if let first = schedule.rules.first {
+            let start = String(format: "%02d:%02d", first.startTime.hour, first.startTime.minute)
+            let end = String(format: "%02d:%02d", first.endTime.hour, first.endTime.minute)
+            return "\(weekdayNames)  \(start) — \(end)"
+        }
+        return weekdayNames
+    }
+
+    private func weekdayShortName(_ weekday: Weekday) -> String {
+        switch weekday {
+        case .monday: "週一"
+        case .tuesday: "週二"
+        case .wednesday: "週三"
+        case .thursday: "週四"
+        case .friday: "週五"
+        case .saturday: "週六"
+        case .sunday: "週日"
+        }
     }
 }
 

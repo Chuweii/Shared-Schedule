@@ -28,6 +28,30 @@ struct CreateScheduleSheet: View {
                         }
                     }
                 }
+
+                Section {
+                    weekdayPicker
+                } header: {
+                    Text("可預約日期")
+                } footer: {
+                    Text("建立後可針對每天細調時段")
+                        .font(.caption2)
+                }
+
+                if !viewModel.selectedWeekdays.isEmpty {
+                    Section("可預約時間") {
+                        DatePicker(
+                            "開始",
+                            selection: $viewModel.ruleStartTime,
+                            displayedComponents: .hourAndMinute
+                        )
+                        DatePicker(
+                            "結束",
+                            selection: $viewModel.ruleEndTime,
+                            displayedComponents: .hourAndMinute
+                        )
+                    }
+                }
             }
             .navigationTitle("新增課表")
             .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +68,50 @@ struct CreateScheduleSheet: View {
                     .fontWeight(.semibold)
                 }
             }
+        }
+    }
+
+    private var weekdayPicker: some View {
+        HStack(spacing: 6) {
+            ForEach(orderedWeekdays, id: \.self) { weekday in
+                weekdayChip(weekday)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func weekdayChip(_ weekday: Weekday) -> some View {
+        let isSelected = viewModel.selectedWeekdays.contains(weekday)
+        return Button {
+            if isSelected {
+                viewModel.selectedWeekdays.remove(weekday)
+            } else {
+                viewModel.selectedWeekdays.insert(weekday)
+            }
+        } label: {
+            Text(weekdayShortName(weekday))
+                .font(.caption.weight(.medium))
+                .frame(width: 36, height: 36)
+                .foregroundStyle(isSelected ? theme.buttonTextPrimary : theme.textSecondary)
+                .background(isSelected ? theme.buttonBgPrimary : theme.bgSecondary)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var orderedWeekdays: [Weekday] {
+        [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
+    }
+
+    private func weekdayShortName(_ weekday: Weekday) -> LocalizedStringKey {
+        switch weekday {
+        case .monday: "一"
+        case .tuesday: "二"
+        case .wednesday: "三"
+        case .thursday: "四"
+        case .friday: "五"
+        case .saturday: "六"
+        case .sunday: "日"
         }
     }
 

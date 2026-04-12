@@ -25,7 +25,8 @@ struct CreateScheduleUseCaseTests {
         // When
         let schedule = try await useCase.createSchedule(
             title: "瑜珈初階",
-            minWindowDuration: 3600
+            minWindowDuration: 3600,
+            ruleTemplate: nil
         )
 
         // Then
@@ -44,7 +45,7 @@ struct CreateScheduleUseCaseTests {
 
         // When / Then
         await #expect(throws: CreateScheduleError.blankTitle) {
-            try await useCase.createSchedule(title: "   ", minWindowDuration: 3600)
+            try await useCase.createSchedule(title: "   ", minWindowDuration: 3600, ruleTemplate: nil)
         }
 
         // Verify repo is untouched
