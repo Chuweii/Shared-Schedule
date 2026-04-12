@@ -25,8 +25,11 @@ technical layer alone.
 1. **Domain stays framework-free.** No `import SwiftUI`, no `import Combine`,
    no `import Supabase`. If you find yourself wanting to, the abstraction
    belongs in Usecase or Infrastructure.
-2. **ViewModels depend on Usecase protocols, not Repositories.** Repositories
-   live behind Usecases.
+2. **ViewModels depend on UseCase protocols, not Repositories.** Each
+   UseCase is defined as a `protocol` with a concrete `struct`
+   implementation. ViewModels hold dependencies as
+   `any XxxUseCaseProtocol` via `init` injection. Repositories live
+   behind UseCases — ViewModels never see or import them.
 3. **Repository protocols live in Domain; implementations live in
    Infrastructure.** This is the dependency-inversion seam — Infrastructure
    depends on Domain, never the other way around.
@@ -36,84 +39,36 @@ technical layer alone.
 5. **Vertical slicing.** When you add a feature, create matching folders in
    each layer (`Domain/X/`, `Usecase/X/`, `Infrastructure/X/`,
    `Presentation/X/`) — do not pile everything into one mega-folder per layer.
-6. **Dependency injection by `init` parameters.** ViewModels and Usecases
+6. **Dependency injection by `init` parameters.** ViewModels and UseCases
    receive their dependencies through `init`, with concrete defaults if
    useful. **Never** reach into a global container or singleton from new
    code.
+7. **Domain types are `nonisolated`.** The project uses
+   `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (Swift 6). All Domain
+   types (`struct`, `enum`) MUST be marked `nonisolated` to opt out of
+   MainActor isolation — without this, synthesized protocol conformances
+   (e.g. `Equatable`) become MainActor-isolated and break cross-actor
+   usage.
 
 ---
 
-## 3. Domain concepts — aggregates, invariants, and just-in-time growth
+## 3. Domain concepts
 
-Before the booking aggregates table below, here are the two terms that table
-relies on, plus the rule that governs when Domain code gets written at all.
-
-### Aggregate
-
-An **aggregate** is a cluster of Domain objects that change together, with
-one **root** as the only legal entry point from the outside. External code
-never bypasses the root to touch internals — it goes through methods on the
-root. Only the root sees all internal objects at once, which is the only
-position from which cross-object rules can be enforced.
-
-Example — the `Schedule` aggregate:
-
-```
-Schedule (root)              ← external code only holds references to Schedule
-├── AvailabilityWindow       ← internal; never mutated directly from outside
-├── AvailabilityWindow
-└── AvailabilityWindow
-```
-
-```swift
-// ❌ Illegal — external code reaching into internals
-let window = schedule.windows[0]
-window.start = newDate
-
-// ✅ Legal — go through the root, which can enforce cross-window rules
-schedule.moveWindow(id: windowID, to: newStart)
-```
-
-### Invariant
-
-An **invariant** is a rule that MUST always be true for the aggregate to be
-in a valid state. The aggregate root's methods exist to enforce these rules
-— if an operation would break an invariant, the method rejects it (returns
-a failure / throws) instead of performing a partial update.
-
-Example — invariants on the `Schedule` aggregate:
-
-1. Two `AvailabilityWindow`s in the same `Schedule` MUST NOT overlap in time
-2. Only the teacher whose `id` matches `schedule.ownerID` may modify it
-3. A window's `end` MUST be strictly after its `start`
-4. A window MUST have a minimum duration (product-defined; e.g. 15 minutes)
-
-Each invariant typically generates **one success test** (the operation goes
-through) **and one failure test** (the operation is rejected). These tests
-are written first (TDD red), and the aggregate code is then grown to
-satisfy them.
-
-### Just-in-time Domain growth
-
-The booking aggregates table in §4 is a **map of expected shapes, not a
-checklist to pre-build**. Concretely:
-
-- **No aggregate is written before the first feature that needs it.** If
-  today's feature only needs `Schedule`, we do not pre-emptively create
-  `Booking` / `Membership` / `Invitation` / `Identity`.
-- **Aggregates evolve through later features.** When a subsequent feature
-  needs to extend an earlier aggregate (e.g. adding `RecurrenceRule` to
-  `Schedule` when the recurrence feature arrives), we go back into plan
-  mode, discuss the extension with the user, and let new tests drive the
-  change. **This is not rework — this is DDD working correctly.**
-- **Shared value objects** (like `DateRange`, `TimeZone` wrappers) live
-  under `Domain/Shared/` only when a second feature actually needs them.
-  No speculative shared types.
-
-In practice this means every new feature's plan (see `docs/workflow.md`
-Stage 1b) explicitly discusses: which aggregate this feature touches, what
-invariants it introduces or depends on, and whether an existing aggregate
-needs to be extended.
+- **Aggregate**: a cluster of Domain objects that change together, with
+  one **root** as the only legal entry point. External code never
+  bypasses the root — all mutation goes through root methods that
+  enforce cross-object rules (e.g. `schedule.addWindow(...)`, not
+  `schedule.windows.append(...)`).
+- **Invariant**: a rule that MUST always hold after any operation on the
+  aggregate. If an operation would break it, the root rejects it
+  (throws). Each invariant generates at least one success test and one
+  failure test.
+- **Just-in-time growth**: the aggregate table in §4 is a map of
+  expected shapes, **not a pre-build checklist**. No aggregate is
+  written before the first feature that needs it. Aggregates evolve
+  through later features — go back to plan mode, discuss extensions
+  with the user, let new tests drive the change. Shared VOs live under
+  `Domain/Shared/` only when a second feature needs them.
 
 ---
 
@@ -133,16 +88,61 @@ needs to be extended.
 
 ---
 
-## 5. MVVM Conventions
+## 5. UseCase conventions
+
+- **One UseCase per operation.** Each UseCase handles a single business
+  operation (create a schedule, list schedules, add a window). Don't
+  bundle multiple operations into a "service" class.
+- **Protocol + struct implementation.** Every UseCase has a protocol
+  (for ViewModel testability) and a concrete `struct` implementation.
+  Both live in `App/Usecase/<Feature>/`.
+
+  ```swift
+  protocol CreateScheduleUseCaseProtocol: Sendable {
+      func createSchedule(title: String, minWindowDuration: TimeInterval)
+          async throws(CreateScheduleError) -> Schedule
+  }
+  ```
+
+- **Descriptive method names — never `execute`.** Name the method after
+  what it does: `createSchedule(...)`, `listSchedules()`,
+  `addWindow(to:start:end:)`. The Java Command Pattern `execute()` hurts
+  call-site readability.
+- **Typed throws.** UseCase methods use `throws(XxxError)` (Swift 6) so
+  callers know exactly which errors can escape.
+- **Error types live in Usecase layer.** Domain errors are caught inside
+  the UseCase and re-thrown as UseCase-level errors or propagated
+  directly if the mapping is 1:1.
+- **UseCases are stateless `struct`s.** They hold repository / provider
+  references but no mutable state.
+
+---
+
+## 6. MVVM Conventions
 
 - **View**: dumb. Bindings + intent dispatch only. No business logic, no
   networking, no formatting beyond what SwiftUI gives you for free.
-- **ViewModel**: holds screen state, calls Usecases, handles loading and
-  error mapping. One ViewModel per screen.
-- **Use the Swift `@Observable` macro** (the iOS 26 deployment target permits
-  it). Don't use `ObservableObject` / `@Published` for new code.
+- **ViewModel**: holds screen state, calls UseCases, handles loading and
+  error mapping. **One ViewModel = one screen** — if a modal/sheet has
+  its own independent state and intent handling, it gets its own
+  ViewModel and counts as a separate screen. A simple confirmation
+  dialog that only reads parent state is part of the parent screen.
+- **Use the Swift `@Observable` macro** (the iOS 26 deployment target
+  permits it). Don't use `ObservableObject` / `@Published` for new code.
+  **Don't create a ViewModel protocol** — `@Observable` classes are
+  tested directly via their concrete type.
+- **ViewModel holds UseCase protocols via `init`** as
+  `any XxxUseCaseProtocol`. See §5 for the protocol pattern.
+- **ViewModel uses UseCase's error type directly.** Don't re-wrap
+  UseCase errors into a separate ViewModel error enum unless the VM
+  genuinely needs to merge errors from multiple UseCases into one
+  unified type. Start with direct usage; introduce a VM-specific error
+  type only when the need arises.
 - **Method names follow user intent**: `onAppear()`, `didTapBook(slot:)`,
   `refresh()`, `didConfirmCancel()`. Not `loadData()` / `setBooking()`.
+- **Error flow**: ViewModel catches UseCase errors and maps them to
+  state properties that the View observes. Domain errors **never**
+  surface raw to the View — the ViewModel always mediates.
 - **Shared state across screens** belongs in a parent feature coordinator,
   not a singleton.
 - **Delegates** (when needed) are declared as
@@ -150,7 +150,7 @@ needs to be extended.
 
 ---
 
-## 6. Target Directory Map
+## 7. Target Directory Map
 
 This is the **target** structure. It is built incrementally — do not create
 empty folders ahead of time. Scaffold a folder only when you have real code

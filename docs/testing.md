@@ -64,14 +64,64 @@ form; the function name is the camelCase form of the same scenario.
 
 ---
 
-## 4. Test categories
+## 4. Test categories and test doubles
 
-| Category | What it covers | Dependencies |
+Each layer mocks **only the layer directly below it** — never skip
+layers.
+
+| Category | What it covers | Test double used | What it proves |
+|---|---|---|---|
+| **Domain unit tests** | Aggregate behavior, invariants | None — pure functions | Business rules are correct |
+| **UseCase tests** | Orchestration, validation, error mapping | Fake **Repository** + Fake **CurrentUserProvider** | UseCase logic is correct given controlled repo state |
+| **ViewModel tests** | State transitions, intent → state | Fake **UseCase** | VM reacts correctly to UseCase results/errors |
+| **Infrastructure integration tests** | Real Supabase queries, RLS | `supabase start` local stack | Persistence + RLS policies work |
+
+### Test double pattern
+
+**Fake UseCase** (used in ViewModel tests):
+
+```swift
+final class FakeCreateScheduleUseCase: CreateScheduleUseCaseProtocol {
+    var resultToReturn: Schedule?
+    var errorToThrow: CreateScheduleError?
+
+    func createSchedule(
+        title: String,
+        minWindowDuration: TimeInterval
+    ) async throws(CreateScheduleError) -> Schedule {
+        if let error = errorToThrow { throw error }
+        return resultToReturn ?? Schedule(
+            ownerID: UserID("teacher-001"),
+            title: title,
+            minWindowDuration: minWindowDuration
+        )
+    }
+}
+```
+
+**Key**: the fake has settable `resultToReturn` / `errorToThrow`
+properties. Tests configure these in the **Given** block to control
+what the ViewModel receives, without knowing anything about
+repositories or infrastructure.
+
+**Fake Repository** (used in UseCase tests): use `InMemoryScheduleRepository`
+(an `actor` backed by a `[ScheduleID: Schedule]` dictionary). This is
+the same in-memory implementation used in the app during Phase 1 mock.
+
+### BDD actor per layer
+
+Given / When / Then is used at every layer, but the **actor** (who
+performs the "When" action) changes:
+
+| Layer | Who is the actor in "When"? | Example |
 |---|---|---|
-| **Domain unit tests** | Pure aggregate behavior, invariants | None — pure functions |
-| **Usecase tests** | Use case orchestration, error mapping | In-memory fake repositories |
-| **ViewModel tests** | State transitions, intent handling | In-memory fake usecases |
-| **Infrastructure integration tests** | Real Supabase queries, RLS, mappers | `supabase start` local stack |
+| **Domain** | Code calling the aggregate method | `schedule.addWindow(...)` |
+| **UseCase** | The ViewModel calling the UseCase | `useCase.createSchedule(...)` |
+| **ViewModel** | The **human user** performing an intent | `vm.didConfirmCreate()` |
+
+**In ViewModel tests, you should NEVER call a UseCase directly.** The
+UseCase call is hidden inside the ViewModel's intent method. The test
+only knows "the user tapped confirm" → "the screen shows X."
 
 ---
 

@@ -84,7 +84,24 @@
 
 ---
 
-## 7. App Store Readiness Checklist
+## 7. Xcode project
+
+- The project uses **`PBXFileSystemSynchronizedRootGroup`** (Xcode 16+).
+  Any `.swift` file placed under `App/` is automatically included in the
+  main app target; any `.swift` file under `Shared ScheduleTests/` is
+  automatically included in the test target. **No manual
+  `project.pbxproj` edits are needed** when adding new source files —
+  just create the file at the right path.
+- **`SWIFT_VERSION = 6.0`** (Swift 6 language mode). All code compiles
+  under strict concurrency. Domain types use `nonisolated` to opt out
+  of the project-wide `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
+- **Do NOT drag `CLAUDE.md` or `docs/` into Xcode's Project Navigator.**
+  Xcode may auto-add them to a target's Resources build phase. Edit
+  these files in VS Code / Cursor / any text editor outside Xcode.
+
+---
+
+## 8. App Store Readiness Checklist
 
 Refer to this list as the app approaches ship-ready. Items are tracked in
 PR descriptions or a dedicated issue — **do not edit this list to mark
