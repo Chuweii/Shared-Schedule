@@ -48,27 +48,11 @@ The plan file is written in **Traditional Chinese**. Use **Given / When /
 Then** (Gherkin-style) for every scenario.
 
 - Give every scenario a unique, descriptive title
-- Write from the **user's perspective** — no API names, no ViewModel state,
-  no class names
+- Write from the **user's perspective** — no API names, no ViewModel
+  state, no class names (e.g. 「使用者輸入 email 並按發送」, not
+  「ViewModel 呼叫 sendVerificationCode」)
 - Cover both **success and failure** scenarios
 - Be readable by non-engineers (PM, designer, the user themselves)
-
-```gherkin
-Scenario: 學生輸入有效 email 並成功收到驗證碼
-  Given 學生在 email 驗證頁
-  When 輸入「test@test.com」並按「發送驗證碼」
-  Then 顯示「驗證碼已寄出」toast
-  And 驗證碼輸入欄位變為可填寫狀態
-```
-
-❌ Don't:
-
-```gherkin
-# 洩漏技術細節
-Scenario: AuthRepository.sendVerificationCode 回傳 403
-  When ViewModel 呼叫 sendVerificationCode
-  Then verifyEmailError 被設為 .registeredEmail
-```
 
 ### 1b. Map each scenario to its implementation
 
@@ -90,15 +74,9 @@ every new piece of the Domain first gets designed.
   重疊」, 「只有 owner 可以修改」.) Every invariant typically becomes
   one success scenario **and** one failure scenario.
 - **Open product questions**: anything that is a business decision, not
-  a technical decision — minimum durations, cross-midnight behavior,
-  edge cases. Ask the user; never guess.
+  a technical decision. Ask the user; never guess.
 
-> **Glossary (short form — full explanation lives in `docs/architecture.md`)**
-> - *Aggregate*: a cluster of Domain objects that change together, with
->   one **root** as the only legal entry point. External code never
->   bypasses the root to touch internals.
-> - *Invariant*: a rule that MUST always hold after any operation on the
->   aggregate. The root's methods exist to enforce these rules.
+(For definitions of aggregate / invariant, see `docs/architecture.md` §3.)
 
 #### Files & boundaries
 
@@ -151,48 +129,22 @@ docs/features/<feature-name>/
 
 ### Plan file vs feature doc
 
-- **Plan file** (`~/.claude/plans/xxx.md`) is a **mid-conversation working
-  draft**. Random name, lives in your home directory, not in the repo.
-  Contains discussion artifacts: open questions, alternatives considered,
-  rejected ideas. Lifespan = the plan-mode conversation.
-- **Feature doc** (`docs/features/<name>/`) is the **permanent product
-  spec**. Lives in the repo, gets committed, is read by future sessions
-  and human reviewers, drives TDD test names.
+**Plan file** = mid-conversation working draft (`~/.claude/plans/xxx.md`,
+not in repo). **Feature doc** = permanent product spec (`docs/features/`,
+committed, drives TDD). Stage 2 reorganizes plan content into the feature
+doc format and drops discussion residue.
 
-> **Plan file is a whiteboard. Feature doc is the meeting notes.**
+### File rules
 
-In Stage 2, take the relevant content from the plan file, **reorganize**
-it into the feature doc format, and drop the discussion residue. Once the
-feature doc exists, the plan file's job is done.
-
-### `spec.md` rules
-
-- Sections: **Why / What / User Flow / Permissions / Scenarios 摘要**
-- Scenarios section is a **summary table** linking to `scenarios.md` —
-  never inline the full Gherkin (it bloats the file)
-- Technical Notes (gotchas, decisions, links to external systems) live at
-  the bottom
-
-### `scenarios.md` rules
-
-- The canonical spec. Every scenario has a unique title and Given / When /
-  Then body.
-- **Test function names MUST mirror scenario titles** so a reader can grep
-  from doc to test in either direction.
-- This is the file TDD reads from in Stage 3.
-
-### `api.md` rules (only when backend is involved)
-
-- 涉及的 Supabase 資料表 / migration 檔
-- API endpoints / RPC functions / Edge Functions
-- Request / response shape (DTO 對應到哪些 Domain 型別)
-- RLS policy 設計
-- See `docs/backend.md` for general Supabase rules.
-
-### Doc must match the plan
-
-The doc content must match the plan that was approved. If something needs
-to change, **go back to plan mode** — don't edit silently.
+- **`spec.md`**: Why / What / User Flow / Permissions / Scenarios summary
+  table (link to `scenarios.md` — never inline full Gherkin). Technical
+  Notes at the bottom.
+- **`scenarios.md`**: canonical spec with Given / When / Then. Test
+  function names MUST mirror scenario titles (grep-able both ways).
+- **`api.md`** (optional, only when backend is involved): Supabase
+  tables, endpoints, RLS policies, DTO shapes. See `docs/backend.md`.
+- **Doc must match the plan.** If something needs to change, go back to
+  plan mode — don't edit silently.
 
 ---
 
@@ -221,35 +173,26 @@ For each slice, the **strict order** is:
    and interactions against the approved spec.
 6. Move to the next slice.
 
-**Why tests before UI**: designing UI against a real, stable ViewModel
-state produces higher-polish first passes than designing against
-placeholder data. The VM's exact properties, error shapes, and async
-behavior are known before the first `Text(...)` is written, so the View
-can be bound correctly on day one.
+**Why tests before UI**: the VM's exact properties, error shapes, and
+async behavior are known before the first `Text(...)` is written, so the
+View can be bound correctly on day one — no placeholder rework.
 
-**Exception — with a design reference**: if the feature ships with a
-Figma / Sketch / design spec, you MAY prototype the View early (with
-placeholder state) to validate the design against the spec before
-starting TDD. The polished final View still comes after the VM is
-green. For **design-free greenfield features** (the default in this
-repo today), no early UI prototyping — go straight to Domain TDD.
+**Exception**: if the feature ships with a Figma / design spec, you MAY
+prototype the View early (placeholder state) to validate fidelity. The
+polished final View still comes after the VM is green.
 
-**Why TDD per scenario**: scenario titles in `scenarios.md` map 1:1 to
-test function names, so progress is visible in the test output and any
-reader can grep from doc to test in either direction.
+**Why TDD per scenario**: scenario titles map 1:1 to test function names,
+so progress is visible in test output and grep works both ways.
 
 ---
 
 ## Collaboration rules
 
-- **The user opens the new module / file ahead of time** if needed and
-  tells Claude the path.
-- If the **backend API exists**, the user provides the shape. If not,
-  Claude implements and tests against **mock data** until the real API
-  lands.
+- If the **backend API exists**, the user provides it. If not, use
+  **mock data** until the real API lands.
 - When in doubt, **ask the user** — never guess product behavior.
-- **Spec / scenarios stay free of technical detail.** Technical detail
-  belongs in the plan, the code, the test names, and `api.md`.
+- **Spec / scenarios stay free of technical detail** — that belongs in
+  the plan, the code, the test names, and `api.md`.
 
 ---
 
