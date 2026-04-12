@@ -85,4 +85,41 @@ nonisolated struct Schedule: Sendable {
     func rulesFor(weekday: Weekday) -> [AvailabilityRule] {
         rules.filter { $0.weekday == weekday }
     }
+
+    // MARK: - Computed Slots
+
+    func computedSlots(
+        for date: Date,
+        calendar: Calendar = .current
+    ) -> [ComputedSlot] {
+        let weekday = Weekday.from(date: date, calendar: calendar)
+        let matchingRules = rulesFor(weekday: weekday)
+
+        var slots: [ComputedSlot] = []
+        let slotDurationMinutes = Int(minWindowDuration / 60)
+
+        for rule in matchingRules {
+            var currentMinutes = rule.startTime.totalMinutes
+            let endMinutes = rule.endTime.totalMinutes
+
+            while currentMinutes + slotDurationMinutes <= endMinutes {
+                let slotStart = calendar.date(
+                    bySettingHour: currentMinutes / 60,
+                    minute: currentMinutes % 60,
+                    second: 0,
+                    of: date
+                )!
+                let slotEnd = calendar.date(
+                    bySettingHour: (currentMinutes + slotDurationMinutes) / 60,
+                    minute: (currentMinutes + slotDurationMinutes) % 60,
+                    second: 0,
+                    of: date
+                )!
+                slots.append(ComputedSlot(start: slotStart, end: slotEnd))
+                currentMinutes += slotDurationMinutes
+            }
+        }
+
+        return slots
+    }
 }
