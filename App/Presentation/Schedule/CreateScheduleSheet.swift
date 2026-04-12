@@ -82,6 +82,9 @@ struct CreateScheduleSheet: View {
 
     private func weekdayChip(_ weekday: Weekday) -> some View {
         let isSelected = viewModel.selectedWeekdays.contains(weekday)
+        let symbols = Calendar.current.shortWeekdaySymbols
+        let name = symbols[weekday.rawValue - 1]
+
         return Button {
             if isSelected {
                 viewModel.selectedWeekdays.remove(weekday)
@@ -89,9 +92,9 @@ struct CreateScheduleSheet: View {
                 viewModel.selectedWeekdays.insert(weekday)
             }
         } label: {
-            Text(weekdayShortName(weekday))
-                .font(.caption.weight(.medium))
-                .frame(width: 36, height: 36)
+            Text(name)
+                .font(.caption2.weight(.medium))
+                .frame(width: 42, height: 42)
                 .foregroundStyle(isSelected ? theme.buttonTextPrimary : theme.textSecondary)
                 .background(isSelected ? theme.buttonBgPrimary : theme.bgSecondary)
                 .clipShape(Circle())
@@ -101,18 +104,6 @@ struct CreateScheduleSheet: View {
 
     private var orderedWeekdays: [Weekday] {
         [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
-    }
-
-    private func weekdayShortName(_ weekday: Weekday) -> LocalizedStringKey {
-        switch weekday {
-        case .monday: "一"
-        case .tuesday: "二"
-        case .wednesday: "三"
-        case .thursday: "四"
-        case .friday: "五"
-        case .saturday: "六"
-        case .sunday: "日"
-        }
     }
 
     private func errorMessage(for error: CreateScheduleError) -> LocalizedStringKey {

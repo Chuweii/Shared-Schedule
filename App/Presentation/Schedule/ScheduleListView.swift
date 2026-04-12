@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ScheduleListView: View {
     @Environment(\.theme) private var theme
+    @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleListViewModel
+    @State private var showSettings = false
     private let dependencies: AppDependencies
 
     init(dependencies: AppDependencies) {
@@ -23,6 +25,11 @@ struct ScheduleListView: View {
         }
         .navigationTitle("我的課表")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button { viewModel.isCreateSheetPresented = true } label: {
                     Image(systemName: "plus")
@@ -31,6 +38,19 @@ struct ScheduleListView: View {
         }
         .sheet(isPresented: $viewModel.isCreateSheetPresented) {
             CreateScheduleSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                ThemeSettingsView()
+                    .navigationTitle("設定")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完成") { showSettings = false }
+                        }
+                    }
+            }
+            .environment(themeManager)
         }
         .task { await viewModel.onAppear() }
     }
@@ -86,10 +106,11 @@ struct ScheduleListView: View {
     }
 
     private func ruleSummary(_ schedule: Schedule) -> String {
+        let symbols = Calendar.current.shortWeekdaySymbols
         let weekdayNames = schedule.rules
             .sorted { $0.weekday.rawValue < $1.weekday.rawValue }
-            .map { weekdayShortName($0.weekday) }
-            .joined(separator: "、")
+            .map { symbols[$0.weekday.rawValue - 1] }
+            .joined(separator: ", ")
 
         if let first = schedule.rules.first {
             let start = String(format: "%02d:%02d", first.startTime.hour, first.startTime.minute)
@@ -97,18 +118,6 @@ struct ScheduleListView: View {
             return "\(weekdayNames)  \(start) — \(end)"
         }
         return weekdayNames
-    }
-
-    private func weekdayShortName(_ weekday: Weekday) -> String {
-        switch weekday {
-        case .monday: "週一"
-        case .tuesday: "週二"
-        case .wednesday: "週三"
-        case .thursday: "週四"
-        case .friday: "週五"
-        case .saturday: "週六"
-        case .sunday: "週日"
-        }
     }
 }
 

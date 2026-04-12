@@ -7,7 +7,7 @@ struct CalendarGridView: View {
     let onSelectDate: (Date) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
-    private let weekdayHeaders: [LocalizedStringKey] = ["日", "一", "二", "三", "四", "五", "六"]
+    private var weekdayHeaders: [String] { Calendar.current.veryShortWeekdaySymbols }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -36,7 +36,7 @@ struct CalendarGridView: View {
     private var weekdayHeaderRow: some View {
         HStack {
             ForEach(Array(weekdayHeaders.enumerated()), id: \.offset) { _, header in
-                Text(header)
+                Text(verbatim: header)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(theme.textCaption)
                     .frame(maxWidth: .infinity)
