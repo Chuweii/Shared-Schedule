@@ -8,6 +8,7 @@ nonisolated struct Schedule: Sendable {
     let title: String
     let minWindowDuration: TimeInterval
     private(set) var windows: [AvailabilityWindow]
+    private(set) var rules: [AvailabilityRule]
 
     init(
         id: ScheduleID = ScheduleID(),
@@ -20,6 +21,7 @@ nonisolated struct Schedule: Sendable {
         self.title = title
         self.minWindowDuration = minWindowDuration
         self.windows = []
+        self.rules = []
     }
 
     mutating func addWindow(
@@ -47,5 +49,40 @@ nonisolated struct Schedule: Sendable {
 
     mutating func removeWindow(id: AvailabilityWindowID) {
         windows.removeAll { $0.id == id }
+    }
+
+    // MARK: - Availability Rules
+
+    mutating func addRule(
+        id: AvailabilityRuleID = AvailabilityRuleID(),
+        weekday: Weekday,
+        startTime: TimeOfDay,
+        endTime: TimeOfDay
+    ) throws(ScheduleError) {
+        guard startTime < endTime else {
+            throw .invalidRange
+        }
+
+        let durationMinutes = endTime.totalMinutes - startTime.totalMinutes
+        guard Double(durationMinutes * 60) >= minWindowDuration else {
+            throw .ruleTooShort
+        }
+
+        guard !rules.contains(where: { $0.weekday == weekday }) else {
+            throw .ruleOverlapping
+        }
+
+        rules.append(AvailabilityRule(
+            id: id, weekday: weekday,
+            startTime: startTime, endTime: endTime
+        ))
+    }
+
+    mutating func removeRule(id: AvailabilityRuleID) {
+        rules.removeAll { $0.id == id }
+    }
+
+    func rulesFor(weekday: Weekday) -> [AvailabilityRule] {
+        rules.filter { $0.weekday == weekday }
     }
 }
