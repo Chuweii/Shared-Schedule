@@ -158,6 +158,12 @@ the docs in §3 explain *how*.
 10. **NEVER** "match the surrounding style" if that style violates these
     rules. Flag the inconsistency to the user instead.
 
+11. **When the user changes a requirement during implementation**, follow
+    the strict order: **docs first → tests second → code last**. Update
+    `spec.md` / `scenarios.md` before writing any test or production
+    code. See `docs/workflow.md` "Requirement changes during
+    implementation".
+
 ---
 
 ## 5. Working Languages
