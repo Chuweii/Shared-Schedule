@@ -43,19 +43,38 @@ struct CreateScheduleWithRulesTests {
         #expect(saved?.rules.count == 3)
     }
 
-    @Test("建立 Schedule 不選任何 weekday")
-    func createSchedule_noWeekdays_createsNoRules() async throws {
+    @Test("建立 Schedule 不傳 ruleTemplate 應 throw noWeekdaysSelected")
+    func createSchedule_nilTemplate_throwsNoWeekdaysSelected() async {
         // Given
         let (useCase, _) = makeSUT()
 
-        // When
-        let schedule = try await useCase.createSchedule(
-            title: "瑜珈初階",
-            minWindowDuration: 3600,
-            ruleTemplate: nil
+        // When / Then
+        await #expect(throws: CreateScheduleError.noWeekdaysSelected) {
+            try await useCase.createSchedule(
+                title: "瑜珈初階",
+                minWindowDuration: 3600,
+                ruleTemplate: nil
+            )
+        }
+    }
+
+    @Test("建立 Schedule 帶空 weekdays set 應 throw noWeekdaysSelected")
+    func createSchedule_emptyWeekdays_throwsNoWeekdaysSelected() async throws {
+        // Given
+        let (useCase, _) = makeSUT()
+        let template = AvailabilityRuleTemplate(
+            weekdays: [],
+            startTime: try TimeOfDay(hour: 9, minute: 0),
+            endTime: try TimeOfDay(hour: 18, minute: 0)
         )
 
-        // Then
-        #expect(schedule.rules.isEmpty)
+        // When / Then
+        await #expect(throws: CreateScheduleError.noWeekdaysSelected) {
+            try await useCase.createSchedule(
+                title: "瑜珈初階",
+                minWindowDuration: 3600,
+                ruleTemplate: template
+            )
+        }
     }
 }

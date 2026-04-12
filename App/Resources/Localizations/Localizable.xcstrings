@@ -441,6 +441,16 @@
         }
       }
     },
+    "請至少選擇一天可預約日期" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Please select at least one available day" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "予約可能日を少なくとも1日選択してください" }
+        }
+      }
+    },
     "標題不能為空" : {
       "localizations" : {
         "en" : {

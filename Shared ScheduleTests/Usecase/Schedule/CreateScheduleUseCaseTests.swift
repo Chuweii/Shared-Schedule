@@ -23,10 +23,15 @@ struct CreateScheduleUseCaseTests {
         let (useCase, repo) = makeSUT()
 
         // When
+        let template = AvailabilityRuleTemplate(
+            weekdays: [.monday],
+            startTime: try TimeOfDay(hour: 9, minute: 0),
+            endTime: try TimeOfDay(hour: 18, minute: 0)
+        )
         let schedule = try await useCase.createSchedule(
             title: "瑜珈初階",
             minWindowDuration: 3600,
-            ruleTemplate: nil
+            ruleTemplate: template
         )
 
         // Then
@@ -35,7 +40,7 @@ struct CreateScheduleUseCaseTests {
         #expect(saved?.title == "瑜珈初階")
         #expect(saved?.ownerID == UserID("teacher-001"))
         #expect(saved?.minWindowDuration == 3600)
-        #expect(saved?.windows.isEmpty == true)
+        #expect(saved?.rules.count == 1)
     }
 
     @Test("以空白 title 建立 Schedule 應 throw blankTitle")

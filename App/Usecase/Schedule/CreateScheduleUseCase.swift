@@ -12,23 +12,25 @@ nonisolated struct CreateScheduleUseCase: CreateScheduleUseCaseProtocol {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw .blankTitle }
 
+        guard let template = ruleTemplate, !template.weekdays.isEmpty else {
+            throw .noWeekdaysSelected
+        }
+
         var schedule = Schedule(
             ownerID: currentUserProvider.currentUser.id,
             title: trimmed,
             minWindowDuration: minWindowDuration
         )
 
-        if let template = ruleTemplate {
-            for weekday in template.weekdays.sorted(by: { $0.rawValue < $1.rawValue }) {
-                do {
-                    try schedule.addRule(
-                        weekday: weekday,
-                        startTime: template.startTime,
-                        endTime: template.endTime
-                    )
-                } catch {
-                    preconditionFailure("addRule failed for \(weekday): \(error)")
-                }
+        for weekday in template.weekdays.sorted(by: { $0.rawValue < $1.rawValue }) {
+            do {
+                try schedule.addRule(
+                    weekday: weekday,
+                    startTime: template.startTime,
+                    endTime: template.endTime
+                )
+            } catch {
+                preconditionFailure("addRule failed for \(weekday): \(error)")
             }
         }
 

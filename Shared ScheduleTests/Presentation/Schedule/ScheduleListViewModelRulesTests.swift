@@ -34,10 +34,11 @@ struct ScheduleListViewModelRulesTests {
         #expect(vm.isCreateSheetPresented == false)
     }
 
-    @Test("didConfirmCreate 不選 weekday → 正常建立、sheet 關閉")
-    func didConfirmCreate_noWeekdays_createsScheduleWithoutRules() async {
+    @Test("didConfirmCreate 不選 weekday → inline error、sheet 不關")
+    func didConfirmCreate_noWeekdays_showsError() async {
         // Given
-        let (vm, _) = makeSUT()
+        let (vm, fakeCreate) = makeSUT()
+        fakeCreate.errorToThrow = .noWeekdaysSelected
         vm.isCreateSheetPresented = true
         vm.titleDraft = "瑜珈初階"
         vm.selectedWeekdays = []
@@ -46,9 +47,9 @@ struct ScheduleListViewModelRulesTests {
         await vm.didConfirmCreate()
 
         // Then
-        #expect(vm.schedules.count == 1)
-        #expect(vm.schedules[0].rules.isEmpty)
-        #expect(vm.isCreateSheetPresented == false)
+        #expect(vm.inlineError == .noWeekdaysSelected)
+        #expect(vm.isCreateSheetPresented == true)
+        #expect(vm.schedules.isEmpty)
     }
 
     @Test("建立後 state 重設")

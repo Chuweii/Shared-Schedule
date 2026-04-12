@@ -109,6 +109,7 @@ struct CreateScheduleSheet: View {
     private func errorMessage(for error: CreateScheduleError) -> LocalizedStringKey {
         switch error {
         case .blankTitle: "標題不能為空"
+        case .noWeekdaysSelected: "請至少選擇一天可預約日期"
         }
     }
 }
