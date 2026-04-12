@@ -190,14 +190,24 @@ And rules 的 weekday 分別是 monday, wednesday, friday
 And 每條 rule 的 startTime == 09:00, endTime == 18:00
 ```
 
-### Scenario: 建立 Schedule 不選任何 weekday
+### Scenario: 建立 Schedule 不傳 ruleTemplate 應 throw noWeekdaysSelected
+
+```
+Given 輸入 title "瑜珈初階"
+And ruleTemplate = nil
+When 呼叫 createSchedule
+Then throws CreateScheduleError.noWeekdaysSelected
+And repo 無新增
+```
+
+### Scenario: 建立 Schedule 帶空 weekdays set 應 throw noWeekdaysSelected
 
 ```
 Given 輸入 title "瑜珈初階"
 And weekdays = []（空）
 When 呼叫 createSchedule
-Then repo 中新 schedule 有 0 條 rules
-And schedule 正常建立（合法——老師稍後再設定）
+Then throws CreateScheduleError.noWeekdaysSelected
+And repo 無新增
 ```
 
 ## ScheduleListViewModel 擴充
@@ -215,15 +225,16 @@ And 該 schedule 有 2 條 rules
 And state.isCreateSheetPresented == false
 ```
 
-### Scenario: didConfirmCreate 不選 weekday → 正常建立、sheet 關閉
+### Scenario: didConfirmCreate 不選 weekday → inline error、sheet 不關
 
 ```
 Given ScheduleListViewModel 的 create sheet 開啟
 And 使用者輸入 title "瑜珈初階"
 And 使用者未選擇任何 weekday
 When 呼叫 didConfirmCreate()
-Then state.schedules 多一筆 schedule（0 rules）
-And state.isCreateSheetPresented == false
+Then state.inlineError == .noWeekdaysSelected
+And state.isCreateSheetPresented == true（sheet 不關）
+And state.schedules 無變化
 ```
 
 ### Scenario: 建立後 list row 顯示 rule 摘要

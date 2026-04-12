@@ -122,9 +122,10 @@ Day Slot List（push 或 expand）
 | # | Scenario | 結果 |
 |---|---|---|
 | 16 | 建立 Schedule 帶 rules | repo 有 N 條 rules |
-| 17 | 建立 Schedule 不選 weekday | 0 rules |
+| 17a | 建立 Schedule 不傳 ruleTemplate | throws `.noWeekdaysSelected` |
+| 17b | 建立 Schedule 帶空 weekdays set | throws `.noWeekdaysSelected` |
 | 18 | VM create 帶 rules | schedule 有 rules |
-| 19 | VM create 不選 weekday | 正常關閉 |
+| 19 | VM create 不選 weekday | inline error、sheet 不關 |
 | 20 | list row 顯示 rule 摘要 | 有 weekday + time |
 | 21 | 建立後 state 重設 | weekdays/time 歸預設 |
 
