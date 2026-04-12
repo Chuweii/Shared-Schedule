@@ -57,6 +57,10 @@ struct AddWindowSheet: View {
             "時段長度不得短於最短時段設定"
         case .scheduleError(.invalidRange):
             "結束時間必須晚於開始時間"
+        case .scheduleError(.ruleOverlapping):
+            "該日已有可預約規則"
+        case .scheduleError(.ruleTooShort):
+            "規則時段不得短於最短時段設定"
         case .notOwner:
             "無權限修改此課表"
         case .scheduleNotFound:

@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ScheduleListView: View {
     @Environment(\.theme) private var theme
+    @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleListViewModel
+    @State private var showSettings = false
     private let dependencies: AppDependencies
 
     init(dependencies: AppDependencies) {
@@ -23,6 +25,11 @@ struct ScheduleListView: View {
         }
         .navigationTitle("我的課表")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button { viewModel.isCreateSheetPresented = true } label: {
                     Image(systemName: "plus")
@@ -31,6 +38,19 @@ struct ScheduleListView: View {
         }
         .sheet(isPresented: $viewModel.isCreateSheetPresented) {
             CreateScheduleSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                ThemeSettingsView()
+                    .navigationTitle("設定")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完成") { showSettings = false }
+                        }
+                    }
+            }
+            .environment(themeManager)
         }
         .task { await viewModel.onAppear() }
     }
@@ -59,7 +79,7 @@ struct ScheduleListView: View {
     private var listView: some View {
         List(viewModel.schedules, id: \.id) { schedule in
             NavigationLink {
-                ScheduleDetailView(schedule: schedule, dependencies: dependencies)
+                ScheduleCalendarView(schedule: schedule)
             } label: {
                 scheduleRow(schedule)
             }
@@ -72,11 +92,32 @@ struct ScheduleListView: View {
                 .font(.headline)
                 .foregroundStyle(theme.textPrimary)
 
-            Text("每堂最短 \(Int(schedule.minWindowDuration / 60)) 分鐘")
-                .font(.subheadline)
-                .foregroundStyle(theme.textSecondary)
+            if schedule.rules.isEmpty {
+                Text("每堂最短 \(Int(schedule.minWindowDuration / 60)) 分鐘")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            } else {
+                Text(ruleSummary(schedule))
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            }
         }
         .padding(.vertical, 4)
+    }
+
+    private func ruleSummary(_ schedule: Schedule) -> String {
+        let symbols = Calendar.current.shortWeekdaySymbols
+        let weekdayNames = schedule.rules
+            .sorted { $0.weekday.rawValue < $1.weekday.rawValue }
+            .map { symbols[$0.weekday.rawValue - 1] }
+            .joined(separator: ", ")
+
+        if let first = schedule.rules.first {
+            let start = String(format: "%02d:%02d", first.startTime.hour, first.startTime.minute)
+            let end = String(format: "%02d:%02d", first.endTime.hour, first.endTime.minute)
+            return "\(weekdayNames)  \(start) — \(end)"
+        }
+        return weekdayNames
     }
 }
 

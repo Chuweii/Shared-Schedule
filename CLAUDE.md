@@ -23,17 +23,21 @@ can self-book lessons.
 **Roadmap — product scope** (known but mostly unimplemented — Domain
 modeling and Supabase schema should leave room for these):
 
-- **MVP**: teacher-owned schedules, invite links, student self-booking,
-  read-only visibility of other students' booked slots (time only, no PII)
+- **MVP**: teacher-owned schedules with availability rules and calendar
+  view, invite links, student self-booking, read-only visibility of
+  other students' booked slots (time only, no PII)
 - **Mid-term**: comments on bookings / schedules, schedule import, friends
 - **Long-term**: course discovery, teacher discovery
 
 **Roadmap — development phases** (order in which we actually build):
 
-1. **Phase 1 — Mock MVP feature 1.** Build "Teacher creates Schedule +
-   AvailabilityWindow" end-to-end against an in-memory repository and a
-   fake `CurrentUserProvider`. No Supabase, no auth. Goal: prove the
-   three-stage workflow and stabilize the `Schedule` aggregate design.
+1. **Phase 1 — Mock MVP features.** Build MVP features end-to-end
+   against in-memory repositories and a fake `CurrentUserProvider`. No
+   Supabase, no auth. Goal: prove the workflow and stabilize Domain
+   design before investing in backend integration.
+   - Feature 1: Schedule aggregate + manual AvailabilityWindow ✅
+   - Feature 2: AvailabilityRule + monthly calendar view ← current
+   - (additional mock features as needed before Phase 2)
 2. **Phase 2 — Backend + Auth integration.** User does Supabase project
    setup and hands over keys. Claude writes `supabase init`, the first
    migration + RLS for `schedules`, `SupabaseScheduleRepository`,
@@ -153,6 +157,12 @@ the docs in §3 explain *how*.
 
 10. **NEVER** "match the surrounding style" if that style violates these
     rules. Flag the inconsistency to the user instead.
+
+11. **When the user changes a requirement during implementation**, follow
+    the strict order: **docs first → tests second → code last**. Update
+    `spec.md` / `scenarios.md` before writing any test or production
+    code. See `docs/workflow.md` "Requirement changes during
+    implementation".
 
 ---
 

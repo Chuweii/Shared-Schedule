@@ -196,6 +196,26 @@ so progress is visible in test output and grep works both ways.
 
 ---
 
+## Requirement changes during implementation
+
+When the user requests a change that differs from the approved plan or
+existing scenarios, follow this **strict order**:
+
+1. **Docs first.** Check `spec.md` and `scenarios.md` — update or add
+   scenarios to reflect the new requirement. Commit the doc change
+   before writing any code.
+2. **Tests second.** Write or update `@Test` functions to match the
+   updated scenarios. Run tests — they should **fail** (red) because
+   the production code still implements the old behavior.
+3. **Implementation last.** Write the minimum production code to make
+   the new tests pass (green). Fix any regressions in existing tests.
+
+**Never** skip step 1. If the docs don't reflect what the code does,
+future sessions will plan against outdated specs. The doc is the source
+of truth; the code follows the doc, not the other way around.
+
+---
+
 ## Quick checklist before writing any production code
 
 - [ ] Called `EnterPlanMode` the moment the feature request arrived
