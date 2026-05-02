@@ -31,3 +31,10 @@ fastlane/screenshots
 
 # macOS
 .DS_Store
+
+# Supabase
+supabase/.temp/
+
+# Secrets / xcconfig (Supabase keys, never commit)
+*.xcconfig
+!Shared Schedule.xcodeproj/SharedScheme.xcconfig

@@ -16,4 +16,5 @@ nonisolated struct AppDependencies: Sendable {
         repository: InMemoryScheduleRepository(),
         currentUserProvider: InMemoryCurrentUserProvider()
     )
+
 }
