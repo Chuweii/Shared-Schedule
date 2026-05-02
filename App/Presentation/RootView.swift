@@ -1,5 +1,8 @@
 import SwiftUI
 import Auth
+import OSLog
+
+private let log = Logger(subsystem: "com.Kyoi.Shared-Schedule", category: "Auth")
 
 struct RootView: View {
     @State private var authState: AuthState = .loading
@@ -15,7 +18,8 @@ struct RootView: View {
                     dependencies: AppDependencies(
                         repository: SupabaseScheduleRepository(),
                         currentUserProvider: userProvider
-                    )
+                    ),
+                    onSignOut: signOut
                 )
             case .unauthenticated:
                 LoginView()
@@ -26,12 +30,32 @@ struct RootView: View {
         }
     }
 
+    private func signOut() async {
+        do {
+            try await SupabaseClientProvider.auth.signOut()
+        } catch {
+            log.error("signOut failed: \(error.localizedDescription, privacy: .public)")
+        }
+        // Defensive: SDK only ignores 401/404 errors — a 403 (e.g. session
+        // already removed server-side after a `db reset`) leaves the keychain
+        // populated, so manually clear it and the in-memory state.
+        do {
+            try AuthClient.Configuration.defaultLocalStorage.remove(key: "supabase.session")
+        } catch {
+            log.error("local session removal failed: \(error.localizedDescription, privacy: .public)")
+        }
+        userProvider.clear()
+        authState = .unauthenticated
+    }
+
     private func observeAuthState() async {
         // Check initial session
-        if let session = try? await SupabaseClientProvider.auth.session {
+        do {
+            let session = try await SupabaseClientProvider.auth.session
             userProvider.update(from: session.user)
             authState = .authenticated
-        } else {
+        } catch {
+            log.info("no active session: \(error.localizedDescription, privacy: .public)")
             authState = .unauthenticated
         }
 

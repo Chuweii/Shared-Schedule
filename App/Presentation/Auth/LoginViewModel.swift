@@ -21,7 +21,7 @@ final class LoginViewModel {
         do {
             try await authClient.signIn(email: email, password: password)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = describe(error)
         }
         isLoading = false
     }
@@ -33,9 +33,26 @@ final class LoginViewModel {
         do {
             try await authClient.signUp(email: email, password: password)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = describe(error)
         }
         isLoading = false
+    }
+
+    private func describe(_ error: Error) -> String {
+        if error is URLError {
+            return String(localized: "loginErrorNetwork")
+        }
+        if case let AuthError.api(apiError) = error {
+            if apiError.weakPassword != nil {
+                return String(localized: "loginErrorWeakPassword")
+            }
+            switch apiError.code {
+            case 400: return String(localized: "loginErrorInvalidCredentials")
+            case 422: return String(localized: "loginErrorUserExists")
+            default: break
+            }
+        }
+        return String(localized: "loginErrorGeneric")
     }
 
     private func validateInput() -> Bool {

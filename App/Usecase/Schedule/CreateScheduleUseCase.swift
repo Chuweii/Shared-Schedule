@@ -37,7 +37,7 @@ nonisolated struct CreateScheduleUseCase: CreateScheduleUseCaseProtocol {
         do {
             try await repository.save(schedule)
         } catch {
-            preconditionFailure("Repository.save failed: \(error)")
+            throw .repositoryFailure
         }
 
         return schedule

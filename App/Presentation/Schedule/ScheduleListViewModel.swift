@@ -3,6 +3,7 @@ import Foundation
 @Observable
 final class ScheduleListViewModel {
     private(set) var schedules: [Schedule] = []
+    private(set) var loadError: LocalizedStringResource?
     private(set) var inlineError: CreateScheduleError?
     var isCreateSheetPresented = false
     var titleDraft = ""
@@ -23,11 +24,17 @@ final class ScheduleListViewModel {
     }
 
     func onAppear() async {
+        loadError = nil
         do {
             schedules = try await listSchedulesUseCase.listSchedules()
         } catch {
             schedules = []
+            loadError = "scheduleListLoadError"
         }
+    }
+
+    func retry() async {
+        await onAppear()
     }
 
     func didCancelCreate() {

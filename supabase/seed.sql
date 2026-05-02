@@ -14,6 +14,9 @@ INSERT INTO auth.users (
   created_at,
   updated_at,
   confirmation_token,
+  email_change,
+  email_change_token_new,
+  recovery_token,
   raw_app_meta_data,
   raw_user_meta_data
 ) VALUES (
@@ -26,6 +29,9 @@ INSERT INTO auth.users (
   now(),
   now(),
   now(),
+  '',
+  '',
+  '',
   '',
   '{"provider": "email", "providers": ["email"]}',
   '{"display_name": "Test Teacher"}'

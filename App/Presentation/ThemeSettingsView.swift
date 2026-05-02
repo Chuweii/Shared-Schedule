@@ -10,12 +10,17 @@ import SwiftUI
 struct ThemeSettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(ThemeManager.self) private var themeManager
+    var onSignOut: (() -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 themePicker
                 previewSection
+
+                if let onSignOut {
+                    signOutSection(action: onSignOut)
+                }
             }
             .padding()
         }
@@ -129,6 +134,25 @@ struct ThemeSettingsView: View {
             statusChip(label: "Success", fg: theme.success, bg: theme.success02)
             statusChip(label: "Warning", fg: theme.warning, bg: theme.warning02)
             statusChip(label: "Error", fg: theme.error, bg: theme.error02)
+        }
+    }
+
+    private func signOutSection(action: @escaping () -> Void) -> some View {
+        VStack(spacing: 12) {
+            Divider()
+
+            Button(role: .destructive) {
+                action()
+            } label: {
+                Text("登出")
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.error)
+            .background(theme.error02)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 

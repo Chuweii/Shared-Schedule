@@ -5,10 +5,13 @@ struct ScheduleListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleListViewModel
     @State private var showSettings = false
+    @State private var pendingSignOut = false
     private let dependencies: AppDependencies
+    private let onSignOut: (() async -> Void)?
 
-    init(dependencies: AppDependencies) {
+    init(dependencies: AppDependencies, onSignOut: (() async -> Void)? = nil) {
         self.dependencies = dependencies
+        self.onSignOut = onSignOut
         self.viewModel = ScheduleListViewModel(
             createScheduleUseCase: dependencies.createScheduleUseCase,
             listSchedulesUseCase: dependencies.listSchedulesUseCase
@@ -17,7 +20,9 @@ struct ScheduleListView: View {
 
     var body: some View {
         Group {
-            if viewModel.schedules.isEmpty {
+            if let error = viewModel.loadError {
+                errorStateView(message: error)
+            } else if viewModel.schedules.isEmpty {
                 emptyStateView
             } else {
                 listView
@@ -41,7 +46,10 @@ struct ScheduleListView: View {
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
-                ThemeSettingsView()
+                ThemeSettingsView(onSignOut: {
+                    showSettings = false
+                    pendingSignOut = true
+                })
                     .navigationTitle("設定")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -53,6 +61,11 @@ struct ScheduleListView: View {
             .environment(themeManager)
         }
         .task { await viewModel.onAppear() }
+        .onChange(of: pendingSignOut) {
+            guard pendingSignOut else { return }
+            pendingSignOut = false
+            Task { await onSignOut?() }
+        }
     }
 
     private var emptyStateView: some View {
@@ -65,6 +78,25 @@ struct ScheduleListView: View {
                 viewModel.isCreateSheetPresented = true
             } label: {
                 Text("建立課表")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(theme.buttonTextPrimary)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(theme.buttonBgPrimary)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func errorStateView(message: LocalizedStringResource) -> some View {
+        ContentUnavailableView {
+            Label(String(localized: message), systemImage: "exclamationmark.triangle")
+        } actions: {
+            Button {
+                Task { await viewModel.retry() }
+            } label: {
+                Text("重試")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(theme.buttonTextPrimary)
                     .padding(.horizontal, 24)
