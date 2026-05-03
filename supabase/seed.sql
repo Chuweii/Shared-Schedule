@@ -128,3 +128,12 @@ INSERT INTO availability_rules (schedule_id, weekday, start_time, end_time) VALU
   ('11111111-1111-1111-1111-111111111111', 4, '09:00', '18:00'),  -- Wednesday
   ('11111111-1111-1111-1111-111111111111', 5, '09:00', '18:00'),  -- Thursday
   ('11111111-1111-1111-1111-111111111111', 6, '09:00', '18:00');  -- Friday
+
+-- 4. Insert a sample invitation for the Yoga Beginner schedule.
+-- Used in Slice 2 integration tests + manual redemption demos.
+INSERT INTO invitations (id, schedule_id, token, expires_at) VALUES (
+  '88888888-8888-8888-8888-888888888888',
+  '11111111-1111-1111-1111-111111111111',
+  'ABCD1234',
+  now() + interval '7 days'
+) ON CONFLICT (id) DO NOTHING;
