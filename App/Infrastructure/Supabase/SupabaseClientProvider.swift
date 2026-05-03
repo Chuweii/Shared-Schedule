@@ -4,10 +4,33 @@ import Foundation
 
 enum SupabaseClientProvider {
 
-    // MARK: - Local dev configuration (hardcoded for Phase 2)
+    // MARK: - Configuration (loaded from xcconfig → Info.plist)
 
-    private static let baseURL = URL(string: "http://127.0.0.1:54321")!
-    private static let anonKey = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
+    private static let baseURL: URL = {
+        let raw = readRequiredString("SUPABASE_URL")
+        guard let url = URL(string: raw) else {
+            fatalError("SUPABASE_URL is not a valid URL: \(raw)")
+        }
+        return url
+    }()
+
+    private static let anonKey: String = readRequiredString("SUPABASE_ANON_KEY")
+
+    private static func readRequiredString(_ key: String) -> String {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
+              !value.isEmpty
+        else {
+            fatalError(
+                "\(key) missing from Info.plist. Check Config/<config>.xcconfig is wired into the build configuration. See docs/backend.md §3."
+            )
+        }
+        if value.contains("PLACEHOLDER") {
+            fatalError(
+                "\(key) is still a PLACEHOLDER. Fill in real values in Config/<config>.xcconfig before running this build configuration."
+            )
+        }
+        return value
+    }
 
     // MARK: - Auth client
 

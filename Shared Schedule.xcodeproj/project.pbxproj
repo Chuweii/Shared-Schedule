@@ -23,6 +23,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		EFC0000A0000000000000000 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		EFC0000B0000000000000000 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
+		EFC0000C0000000000000000 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		EFD1CA5E2F5408B000B59468 /* Shared Schedule.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Shared Schedule.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		EFD1CA6B2F5408B100B59468 /* Shared ScheduleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Shared ScheduleTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -73,9 +76,20 @@
 			children = (
 				EFD1CA602F5408B000B59468 /* App */,
 				EFD1CA6E2F5408B100B59468 /* Shared ScheduleTests */,
+				EFC000990000000000000000 /* Config */,
 				EF5F337B2FA63614009483C5 /* Frameworks */,
 				EFD1CA5F2F5408B000B59468 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		EFC000990000000000000000 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				EFC0000A0000000000000000 /* Debug.xcconfig */,
+				EFC0000B0000000000000000 /* Staging.xcconfig */,
+				EFC0000C0000000000000000 /* Release.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		EFD1CA5F2F5408B000B59468 /* Products */ = {
@@ -225,6 +239,7 @@
 /* Begin XCBuildConfiguration section */
 		EFD1CA7D2F5408B100B59468 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = EFC0000A0000000000000000 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -289,6 +304,7 @@
 		};
 		EFD1CA7E2F5408B100B59468 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = EFC0000C0000000000000000 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -354,6 +370,7 @@
 				DEVELOPMENT_TEAM = 2X5XPADK8C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -385,6 +402,7 @@
 				DEVELOPMENT_TEAM = 2X5XPADK8C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

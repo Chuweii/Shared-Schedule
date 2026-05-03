@@ -1,0 +1,13 @@
+// Debug build → local Supabase stack (`supabase start`).
+//
+// The "publishable" / anon key is designed to be public — RLS policies
+// enforce all access. Service role keys must NEVER appear here.
+// See docs/backend.md §3 and §5.
+//
+// xcconfig quirk: `//` is the comment marker. The empty-expansion `$()`
+// must sit BETWEEN the slashes — `http:/$()/host` defeats the comment
+// lexer and expands to `http://host`. `http:$()//host` does NOT work
+// (the lexer strips the comment before variable expansion).
+
+SUPABASE_URL = http:/$()/127.0.0.1:54321
+SUPABASE_ANON_KEY = sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH

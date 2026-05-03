@@ -35,6 +35,11 @@ fastlane/screenshots
 # Supabase
 supabase/.temp/
 
-# Secrets / xcconfig (Supabase keys, never commit)
+# xcconfig — block by default, then allow project-tracked configs.
+# Anything outside Config/ stays gitignored (so service-role keys or
+# experimental configs don't leak in by accident).
 *.xcconfig
 !Shared Schedule.xcodeproj/SharedScheme.xcconfig
+!Config/Debug.xcconfig
+!Config/Staging.xcconfig
+!Config/Release.xcconfig

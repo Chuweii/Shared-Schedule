@@ -1,0 +1,11 @@
+// Staging build → cloud staging project.
+//
+// PLACEHOLDER values. Fill in with real staging keys before adding a
+// Staging build configuration that points at this file.
+// (Staging cloud project is deferred until Phase 3 prep — see docs/backend.md §3.)
+//
+// Anon key is designed to be public — committing it is fine.
+// Service role keys must NEVER appear here.
+
+SUPABASE_URL = https:/$()/PLACEHOLDER-staging.supabase.co
+SUPABASE_ANON_KEY = PLACEHOLDER-staging-anon-key

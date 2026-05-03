@@ -1,0 +1,11 @@
+// Release build → production cloud project.
+//
+// PLACEHOLDER values. Fill in with real prod keys before App Store
+// submission. The app's SupabaseClientProvider will fail loudly at
+// startup if these placeholders reach a Release archive.
+//
+// Anon key is designed to be public — committing it is fine.
+// Service role keys must NEVER appear here.
+
+SUPABASE_URL = https:/$()/PLACEHOLDER-prod.supabase.co
+SUPABASE_ANON_KEY = PLACEHOLDER-prod-anon-key
