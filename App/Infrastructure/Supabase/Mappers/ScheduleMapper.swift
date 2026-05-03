@@ -31,11 +31,9 @@ enum ScheduleMapper {
         }
 
         if let windowDTOs = dto.availabilityWindows {
-            let isoFormatter = ISO8601DateFormatter()
-            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             for windowDTO in windowDTOs {
-                guard let start = isoFormatter.date(from: windowDTO.startAt),
-                      let end = isoFormatter.date(from: windowDTO.endAt)
+                guard let start = parseTimestamptz(windowDTO.startAt),
+                      let end = parseTimestamptz(windowDTO.endAt)
                 else { continue }
 
                 try? schedule.addWindow(
@@ -73,14 +71,12 @@ enum ScheduleMapper {
     }
 
     static func toWindowInsertDTOs(_ schedule: Schedule) -> [AvailabilityWindowInsertDTO] {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return schedule.windows.map { window in
             AvailabilityWindowInsertDTO(
                 id: window.id.rawValue,
                 scheduleId: schedule.id.rawValue,
-                startAt: isoFormatter.string(from: window.start),
-                endAt: isoFormatter.string(from: window.end)
+                startAt: formatTimestamptz(window.start),
+                endAt: formatTimestamptz(window.end)
             )
         }
     }
@@ -98,5 +94,25 @@ enum ScheduleMapper {
 
     private static func formatTime(_ time: TimeOfDay) -> String {
         String(format: "%02d:%02d:00", time.hour, time.minute)
+    }
+
+    // PostgREST surfaces TIMESTAMPTZ in two main shapes depending on whether
+    // the value carries sub-second precision: `2026-05-02T15:00:00+00:00`
+    // (whole second) or `2026-05-02T15:00:00.500+00:00` (millisecond).
+    // Try with-fractional first, then without — covers both.
+    static func parseTimestamptz(_ string: String) -> Date? {
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFractional.date(from: string) { return date }
+
+        let withoutFractional = ISO8601DateFormatter()
+        withoutFractional.formatOptions = [.withInternetDateTime]
+        return withoutFractional.date(from: string)
+    }
+
+    static func formatTimestamptz(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
 }

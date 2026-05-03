@@ -124,6 +124,25 @@ struct ScheduleMapperTests {
         #expect(window.end.timeIntervalSince(window.start) == 3600)
     }
 
+    @Test("Postgres TIMESTAMPTZ 格式（無 fractional seconds）也能解析 — regression for round-trip integration bug")
+    func toDomain_postgresTimestamptzWithoutFractionalSeconds_parsesCorrectly() {
+        // Given — PostgREST emits `2026-05-02T15:00:00+00:00` for whole-second values
+        let windowDTO = AvailabilityWindowDTO(
+            id: windowId,
+            scheduleId: scheduleId,
+            startAt: "2026-05-02T15:00:00+00:00",
+            endAt: "2026-05-02T16:00:00+00:00"
+        )
+        let dto = makeScheduleDTO(windows: [windowDTO])
+
+        // When
+        let schedule = ScheduleMapper.toDomain(dto)
+
+        // Then
+        #expect(schedule.windows.count == 1)
+        #expect(schedule.windows.first?.end.timeIntervalSince(schedule.windows.first!.start) == 3600)
+    }
+
     @Test("DTO 含格式錯誤的 ISO 字串 — 該 window 被略過")
     func toDomain_malformedISOString_skipsWindow() {
         // Given
