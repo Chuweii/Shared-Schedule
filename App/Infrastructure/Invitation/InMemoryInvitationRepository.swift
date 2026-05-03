@@ -20,4 +20,14 @@ nonisolated final class InMemoryInvitationRepository: InvitationRepositoryProtoc
             .filter { $0.scheduleID == scheduleID }
             .sorted { $0.createdAt > $1.createdAt }
     }
+
+    func redeem(token: InvitationToken)
+        async throws(InvitationRedemptionError) -> InvitationRedemption
+    {
+        // Redemption requires the Postgres RPC and a real auth identity;
+        // it has no meaningful in-memory equivalent. Previews that exercise
+        // the submit path should wire `FakeRedeemInvitationUseCase` at the
+        // ViewModel boundary instead.
+        throw .persistenceFailure
+    }
 }

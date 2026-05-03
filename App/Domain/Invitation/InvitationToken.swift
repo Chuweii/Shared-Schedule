@@ -11,14 +11,17 @@ nonisolated struct InvitationToken: Hashable, Sendable {
     /// Crockford alphabet without I L O U.
     static let alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
+    /// Pre-built `Set` for O(1) membership checks; reused by token init and
+    /// by the redeem-input normalization on the View side.
+    static let alphabetSet: Set<Character> = Set(alphabet)
+
     let rawValue: String
 
     init(_ rawValue: String) throws(InvitationTokenError) {
         guard rawValue.count == Self.length else {
             throw .invalidLength
         }
-        let allowed = Set(Self.alphabet)
-        guard rawValue.allSatisfy({ allowed.contains($0) }) else {
+        guard rawValue.allSatisfy({ Self.alphabetSet.contains($0) }) else {
             throw .invalidCharacter
         }
         self.rawValue = rawValue

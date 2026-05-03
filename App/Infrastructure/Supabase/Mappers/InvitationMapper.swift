@@ -26,4 +26,15 @@ enum InvitationMapper {
             expiresAt: ScheduleMapper.formatTimestamptz(invitation.expiresAt)
         )
     }
+
+    static func toRedemption(_ dto: InvitationRedemptionDTO) -> InvitationRedemption? {
+        guard let joinedAt = ScheduleMapper.parseTimestamptz(dto.joinedAt) else {
+            return nil
+        }
+        return InvitationRedemption(
+            scheduleID: ScheduleID(dto.scheduleId),
+            membershipID: MembershipID(dto.membershipId),
+            joinedAt: joinedAt
+        )
+    }
 }

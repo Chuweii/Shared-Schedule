@@ -11,7 +11,15 @@ final class FakeInvitationRepository: InvitationRepositoryProtocol, @unchecked S
     /// Set to make `fetchAll` throw — used to drive the persistenceFailure path.
     var fetchAllError: Error?
 
+    /// Set to make `redeem` return this redemption — used for R1 / R6 paths.
+    var redeemResultToReturn: InvitationRedemption?
+
+    /// Set to make `redeem` throw this error — used for R2-R5 mapping paths.
+    var redeemErrorToThrow: InvitationRedemptionError?
+
     private(set) var saveCount = 0
+    private(set) var redeemCount = 0
+    private(set) var lastRedeemedToken: InvitationToken?
 
     func save(_ invitation: Invitation) async throws {
         saveCount += 1
@@ -36,6 +44,18 @@ final class FakeInvitationRepository: InvitationRepositoryProtocol, @unchecked S
         for invitation in invitations {
             store[invitation.id] = invitation
         }
+    }
+
+    func redeem(token: InvitationToken)
+        async throws(InvitationRedemptionError) -> InvitationRedemption
+    {
+        redeemCount += 1
+        lastRedeemedToken = token
+        if let redeemErrorToThrow { throw redeemErrorToThrow }
+        if let redeemResultToReturn { return redeemResultToReturn }
+        // No expectation set — surface as persistenceFailure so callers
+        // notice they forgot to wire the test double.
+        throw .persistenceFailure
     }
 }
 
