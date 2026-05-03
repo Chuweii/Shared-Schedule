@@ -18,7 +18,7 @@ nonisolated struct RemoveAvailabilityWindowUseCase: RemoveAvailabilityWindowUseC
         do {
             try await repository.save(schedule)
         } catch {
-            preconditionFailure("Repository.save failed: \(error)")
+            throw .repositoryFailure
         }
 
         return schedule
@@ -28,7 +28,7 @@ nonisolated struct RemoveAvailabilityWindowUseCase: RemoveAvailabilityWindowUseC
         do {
             return try await repository.fetch(id: id)
         } catch {
-            preconditionFailure("Repository.fetch failed: \(error)")
+            throw .repositoryFailure
         }
     }
 }

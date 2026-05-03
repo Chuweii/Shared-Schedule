@@ -2,8 +2,10 @@
 
 final class FakeListSchedulesUseCase: ListSchedulesUseCaseProtocol, @unchecked Sendable {
     var schedulesToReturn: [Schedule] = []
+    var errorToThrow: Error?
 
     func listSchedules() async throws -> [Schedule] {
-        schedulesToReturn
+        if let error = errorToThrow { throw error }
+        return schedulesToReturn
     }
 }

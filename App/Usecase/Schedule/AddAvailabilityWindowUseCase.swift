@@ -25,7 +25,7 @@ nonisolated struct AddAvailabilityWindowUseCase: AddAvailabilityWindowUseCasePro
         do {
             try await repository.save(schedule)
         } catch {
-            preconditionFailure("Repository.save failed: \(error)")
+            throw .repositoryFailure
         }
 
         return schedule
@@ -35,7 +35,7 @@ nonisolated struct AddAvailabilityWindowUseCase: AddAvailabilityWindowUseCasePro
         do {
             return try await repository.fetch(id: id)
         } catch {
-            preconditionFailure("Repository.fetch failed: \(error)")
+            throw .repositoryFailure
         }
     }
 }

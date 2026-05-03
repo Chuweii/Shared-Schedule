@@ -21,7 +21,7 @@ final class LoginViewModel {
         do {
             try await authClient.signIn(email: email, password: password)
         } catch {
-            errorMessage = describe(error)
+            errorMessage = Self.describe(error)
         }
         isLoading = false
     }
@@ -33,12 +33,12 @@ final class LoginViewModel {
         do {
             try await authClient.signUp(email: email, password: password)
         } catch {
-            errorMessage = describe(error)
+            errorMessage = Self.describe(error)
         }
         isLoading = false
     }
 
-    private func describe(_ error: Error) -> String {
+    static func describe(_ error: Error) -> String {
         if error is URLError {
             return String(localized: "loginErrorNetwork")
         }

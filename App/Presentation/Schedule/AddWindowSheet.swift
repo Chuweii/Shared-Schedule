@@ -65,6 +65,8 @@ struct AddWindowSheet: View {
             "無權限修改此課表"
         case .scheduleNotFound:
             "找不到此課表"
+        case .repositoryFailure:
+            "儲存失敗，請稍後再試"
         }
     }
 }
