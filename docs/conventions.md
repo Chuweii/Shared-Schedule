@@ -56,8 +56,12 @@
   before the feature is considered complete.** Leaving a string
   untranslated in `en` or `ja` counts as an unfinished feature, not a
   follow-up task.
-- Use the key as plain English text (Apple's recommended pattern), not
-  symbolic IDs.
+- **Keys use the development language verbatim, not symbolic IDs.**
+  Project development language is `zh-Hant`, so source code writes
+  `Text("新增課表")` and Xcode auto-extraction inserts the Chinese key
+  into the catalog. Do not invent symbolic keys like `addScheduleTitle`.
+  Translations to `en` / `ja` are filled into the catalog entries —
+  the *key* itself stays Chinese.
 
 ---
 

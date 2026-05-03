@@ -194,7 +194,7 @@ AddWindowSheet
 - **三語同步**：zh-Hant / en / ja 在每個 PR 必須同時 checkin
 - **開發語言為 zh-Hant**：Xcode Project Info → Localizations 設定 zh-Hant 為 Development Language
 - **code 內字面值為中文**：`Text("新增課表")`，Xcode auto-extraction 會把中文 key 拉進 catalog
-- ⚠️ 這與 `docs/conventions.md` §4「Use the key as plain English text」的措辭矛盾——那邊應改為 language-neutral 寫法。另開 chore commit 修 conventions.md。
+- 這條政策已經在 `docs/conventions.md` §4 對齊（key 採用開發語言、即 zh-Hant，不用符號式 ID）
 
 ### 時區處理
 

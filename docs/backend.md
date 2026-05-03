@@ -8,10 +8,14 @@
 
 ## 1. Integration Status
 
-> **Current status: `Not started`**
+> **Current status: `Local dev`**
 >
 > Update this badge as the integration progresses:
 > `Not started` → `Local dev` → `Staging` → `Production`.
+>
+> What "Local dev" means here: `supabase start` stack is the source of
+> truth; `Debug.xcconfig` points at it; integration tests exercise it.
+> No cloud project exists yet.
 
 ---
 
@@ -51,24 +55,34 @@ Three environments, each with its own Supabase instance:
 
 ### How the app switches environments
 
-Xcode build configurations + `.xcconfig` files:
+Xcode build configurations + `.xcconfig` files. Three configs live under
+`Config/` at the repo root:
 
-```
-// Debug.xcconfig (local dev — gitignored)
-SUPABASE_URL = http://localhost:54321
-SUPABASE_ANON_KEY = local-anon-key
+| File | Status | Wired to build config | Values |
+|---|---|---|---|
+| `Config/Debug.xcconfig` | Committed | `Debug` | Local stack — `http://127.0.0.1:54321` + publishable key |
+| `Config/Staging.xcconfig` | Committed | _not yet wired_ | Placeholder; fill in when the staging cloud project exists, then add a `Staging` build configuration that points at this file |
+| `Config/Release.xcconfig` | Committed | `Release` | Placeholder; fill in before App Store submission |
 
-// Staging.xcconfig (gitignored)
-SUPABASE_URL = https://xxx-staging.supabase.co
-SUPABASE_ANON_KEY = staging-anon-key
+xcconfig defines `SUPABASE_URL` and `SUPABASE_ANON_KEY` build settings.
+`Info.plist` (at repo root) has matching `$(SUPABASE_URL)` /
+`$(SUPABASE_ANON_KEY)` substitutions, so each build configuration's
+values land in the produced `Info.plist`. The merge keeps Xcode's
+`GENERATE_INFOPLIST_FILE = YES` auto-generated bundle keys.
 
-// Release.xcconfig (gitignored)
-SUPABASE_URL = https://xxx-prod.supabase.co
-SUPABASE_ANON_KEY = prod-anon-key
-```
+`SupabaseClientProvider` reads the values from
+`Bundle.main.object(forInfoDictionaryKey:)` and `fatalError`s loudly if
+either key is missing or still contains `PLACEHOLDER` — so an accidental
+Release archive against an unconfigured `Release.xcconfig` will fail at
+launch instead of pointing at the wrong host.
 
-App reads `Bundle.main.infoDictionary["SUPABASE_URL"]` at runtime.
-**Production keys never appear in development or test flows.**
+Anon (publishable) keys are designed to be public; RLS policies enforce
+all access. **Service role keys must NEVER appear in xcconfig** — they
+live only on the developer machine and inside Edge Functions.
+
+xcconfig comment quirk: `//` is the comment marker, so URLs need an
+empty-expansion `$()` between the slashes — `http:/$()/host` evaluates
+to `http://host`. `http:$()//host` does NOT work.
 
 ### Which tests connect to what
 
