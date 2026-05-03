@@ -914,6 +914,102 @@
           }
         }
       }
+    },
+    "%@ 失效" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Expires %@" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "有効期限 %@" }
+        }
+      }
+    },
+    "inviteSheetGenerateFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Failed to generate invitation. Please try again." }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "招待コードの生成に失敗しました。後でもう一度お試しください。" }
+        },
+        "zh-Hant" : {
+          "stringUnit" : { "state" : "translated", "value" : "產生邀請碼失敗，請稍後再試" }
+        }
+      }
+    },
+    "inviteSheetLoadError" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Failed to load invitations. Please try again." }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "招待コードの読み込みに失敗しました。後でもう一度お試しください。" }
+        },
+        "zh-Hant" : {
+          "stringUnit" : { "state" : "translated", "value" : "讀取邀請碼失敗，請稍後再試" }
+        }
+      }
+    },
+    "產生一個邀請碼分享給學生，他們可以用這組碼加入這份課表" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Generate an invitation code to share with students. They can use it to join this schedule." }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "招待コードを生成して生徒と共有しましょう。コードを使ってこのスケジュールに参加できます。" }
+        }
+      }
+    },
+    "產生新邀請碼" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Generate New Code" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "新しいコードを生成" }
+        }
+      }
+    },
+    "複製" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Copy" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "コピー" }
+        }
+      }
+    },
+    "還沒有邀請碼" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "No invitation codes yet" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "招待コードがまだありません" }
+        }
+      }
+    },
+    "邀請學生" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Invite Students" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "生徒を招待" }
+        }
+      }
+    },
+    "邀請學生加入「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Invite students to join %@" }
+        },
+        "ja" : {
+          "stringUnit" : { "state" : "translated", "value" : "生徒を「%@」に招待" }
+        }
+      }
     }
   },
   "version" : "1.1"

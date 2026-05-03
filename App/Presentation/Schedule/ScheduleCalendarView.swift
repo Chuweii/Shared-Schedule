@@ -3,9 +3,17 @@ import SwiftUI
 struct ScheduleCalendarView: View {
     @Environment(\.theme) private var theme
     @State private var viewModel: ScheduleCalendarViewModel
+    @State private var showInviteSheet = false
+    private let dependencies: AppDependencies?
 
-    init(schedule: Schedule) {
+    init(schedule: Schedule, dependencies: AppDependencies? = nil) {
+        self.dependencies = dependencies
         self.viewModel = ScheduleCalendarViewModel(schedule: schedule)
+    }
+
+    private var isOwner: Bool {
+        guard let dependencies else { return false }
+        return viewModel.schedule.ownerID == dependencies.currentUserProvider.currentUser.id
     }
 
     var body: some View {
@@ -36,6 +44,27 @@ struct ScheduleCalendarView: View {
             }
         }
         .navigationTitle(viewModel.schedule.title)
+        .toolbar {
+            if isOwner {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showInviteSheet = true
+                    } label: {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                    }
+                    .accessibilityLabel(Text("邀請學生"))
+                }
+            }
+        }
+        .sheet(isPresented: $showInviteSheet) {
+            if let dependencies {
+                InviteSheet(viewModel: InviteSheetViewModel(
+                    schedule: viewModel.schedule,
+                    createInvitationUseCase: dependencies.createInvitationUseCase,
+                    listInvitationsUseCase: dependencies.listInvitationsUseCase
+                ))
+            }
+        }
         .task { await viewModel.onAppear() }
     }
 

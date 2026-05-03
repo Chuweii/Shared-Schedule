@@ -111,7 +111,7 @@ struct ScheduleListView: View {
     private var listView: some View {
         List(viewModel.schedules, id: \.id) { schedule in
             NavigationLink {
-                ScheduleCalendarView(schedule: schedule)
+                ScheduleCalendarView(schedule: schedule, dependencies: dependencies)
             } label: {
                 scheduleRow(schedule)
             }

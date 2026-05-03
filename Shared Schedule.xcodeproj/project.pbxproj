@@ -71,6 +71,16 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		EFC000990000000000000000 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				EFC0000A0000000000000000 /* Debug.xcconfig */,
+				EFC0000B0000000000000000 /* Staging.xcconfig */,
+				EFC0000C0000000000000000 /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		EFD1CA552F5408B000B59468 = {
 			isa = PBXGroup;
 			children = (
@@ -80,16 +90,6 @@
 				EF5F337B2FA63614009483C5 /* Frameworks */,
 				EFD1CA5F2F5408B000B59468 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		EFC000990000000000000000 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				EFC0000A0000000000000000 /* Debug.xcconfig */,
-				EFC0000B0000000000000000 /* Staging.xcconfig */,
-				EFC0000C0000000000000000 /* Release.xcconfig */,
-			);
-			path = Config;
 			sourceTree = "<group>";
 		};
 		EFD1CA5F2F5408B000B59468 /* Products */ = {
