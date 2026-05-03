@@ -169,6 +169,112 @@ struct SupabaseIntegrationTests {
         }
     }
 
+    // MARK: - SupabaseInvitationRepository
+
+    @Suite(.serialized) struct Invitations {
+
+        @Test("Owner saves invitation then fetchAll for the schedule round-trips it")
+        func ownerSaveAndFetchAllInvitations_roundTrips() async throws {
+            // Given: as user A, save a schedule + an invitation for it
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID(UUID())
+            let schedule = Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "Invitation round-trip \(UUID().uuidString.prefix(8))"
+            )
+            try await scheduleRepo.save(schedule)
+
+            let createdAt = Date()
+            let invitationID = InvitationID(UUID())
+            let invitation = try Invitation(
+                id: invitationID,
+                scheduleID: scheduleID,
+                token: try InvitationToken("ABCD" + String(UUID().uuidString.prefix(4)).uppercased().filter({ "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains($0) }).padding(toLength: 4, withPad: "Z", startingAt: 0)),
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            )
+
+            // When
+            try await invitationRepo.save(invitation)
+            let fetched = try await invitationRepo.fetchAll(for: scheduleID)
+
+            // Then
+            let result = try #require(fetched.first(where: { $0.id == invitationID }))
+            #expect(result.scheduleID == scheduleID)
+            #expect(result.token == invitation.token)
+        }
+
+        @Test("Given user A's invitation, when user B fetchAll on that schedule, then RLS strips and result is empty")
+        func userBFetchesUserAInvitations_rlsReturnsEmpty() async throws {
+            // Given: A saves invitation
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID(UUID())
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "RLS deny invitation \(UUID().uuidString.prefix(8))"
+            ))
+            let createdAt = Date()
+            let invitation = try Invitation(
+                scheduleID: scheduleID,
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            )
+            try await invitationRepo.save(invitation)
+
+            // When: switch to user B
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let leak = try await invitationRepo.fetchAll(for: scheduleID)
+
+            // Then: RLS owner_select on invitations + member_select on schedules
+            // both deny — B is neither owner nor member.
+            #expect(leak.isEmpty)
+        }
+
+        @Test("Given a token already in use, when saving another invitation with the same token, then UNIQUE constraint throws")
+        func duplicateToken_throwsUniqueViolation() async throws {
+            // Given
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID(UUID())
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "Dup token \(UUID().uuidString.prefix(8))"
+            ))
+            // Pick a unique-per-run token to avoid clashing with prior runs.
+            let sharedToken = try InvitationToken(
+                String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(8)).uppercased()
+                    .filter { "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains($0) }
+                    .padding(toLength: 8, withPad: "Z", startingAt: 0)
+            )
+            let createdAt = Date()
+            try await invitationRepo.save(try Invitation(
+                scheduleID: scheduleID,
+                token: sharedToken,
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            ))
+
+            // When: a second invitation with the same token
+            // Then: throws (Postgres UNIQUE violation surfaces as PostgrestError)
+            await #expect(throws: (any Error).self) {
+                try await invitationRepo.save(try Invitation(
+                    scheduleID: scheduleID,
+                    token: sharedToken,
+                    expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                    createdAt: createdAt
+                ))
+            }
+        }
+    }
+
     // MARK: - SupabaseAuthCurrentUserProvider
 
     @Suite(.serialized) struct AuthCurrentUserProvider {
