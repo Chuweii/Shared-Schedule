@@ -29,6 +29,13 @@ nonisolated struct AppDependencies: Sendable {
         )
     }
 
+    var redeemInvitationUseCase: any RedeemInvitationUseCaseProtocol {
+        RedeemInvitationUseCase(
+            invitationRepository: invitationRepository,
+            scheduleRepository: repository
+        )
+    }
+
     static let live = AppDependencies(
         repository: InMemoryScheduleRepository(),
         invitationRepository: InMemoryInvitationRepository(),

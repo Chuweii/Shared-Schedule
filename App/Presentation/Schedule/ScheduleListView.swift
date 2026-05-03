@@ -5,6 +5,7 @@ struct ScheduleListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleListViewModel
     @State private var showSettings = false
+    @State private var showRedeemSheet = false
     @State private var pendingSignOut = false
     private let dependencies: AppDependencies
     private let onSignOut: (() async -> Void)?
@@ -36,6 +37,12 @@ struct ScheduleListView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
+                Button { showRedeemSheet = true } label: {
+                    Image(systemName: "envelope.badge")
+                }
+                .accessibilityLabel(Text("輸入邀請碼"))
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button { viewModel.isCreateSheetPresented = true } label: {
                     Image(systemName: "plus")
                 }
@@ -43,6 +50,11 @@ struct ScheduleListView: View {
         }
         .sheet(isPresented: $viewModel.isCreateSheetPresented) {
             CreateScheduleSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showRedeemSheet) {
+            RedeemInvitationSheet(viewModel: RedeemInvitationViewModel(
+                redeemInvitationUseCase: dependencies.redeemInvitationUseCase
+            ))
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
@@ -74,18 +86,30 @@ struct ScheduleListView: View {
         } description: {
             Text("建立你的第一份課表，讓學生預約你的時間")
         } actions: {
-            Button {
-                viewModel.isCreateSheetPresented = true
-            } label: {
-                Text("建立課表")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(theme.buttonTextPrimary)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(theme.buttonBgPrimary)
-                    .clipShape(Capsule())
+            VStack(spacing: 12) {
+                Button {
+                    viewModel.isCreateSheetPresented = true
+                } label: {
+                    Text("建立課表")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(theme.buttonTextPrimary)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(theme.buttonBgPrimary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showRedeemSheet = true
+                } label: {
+                    Text("輸入邀請碼")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(theme.textSecondary)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
