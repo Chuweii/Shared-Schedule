@@ -41,10 +41,11 @@ modeling and Supabase schema should leave room for these):
 2. **Phase 2 — Backend + Auth integration.** User does Supabase project
    setup and hands over keys. Claude writes `supabase init`, the first
    migration + RLS for `schedules`, `SupabaseScheduleRepository`,
-   `SupabaseAuthCurrentUserProvider`, and a login flow (Sign in with Apple
-   first, then Google, then Facebook — all via Supabase Auth). Feature 1
-   is migrated from mock to real (swap two Infrastructure classes, no
-   Domain/ViewModel/test changes).
+   `SupabaseAuthCurrentUserProvider`, and an **email + password login
+   flow** via Supabase Auth. Feature 1 is migrated from mock to real
+   (swap two Infrastructure classes, no Domain/ViewModel/test changes).
+   Social logins (Apple / Google / Facebook) are deferred — see
+   `docs/backend.md` §6.
 3. **Phase 3 — Remaining MVP features on real backend.** Invitation /
    Membership → Student booking → visibility of other students' booked
    slots. Every new feature lives on real Supabase + real auth + real

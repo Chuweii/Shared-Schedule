@@ -23,7 +23,7 @@
 - Author Row Level Security (RLS) policies
 - Write Edge Functions (Deno / TypeScript)
 - Integrate `supabase-swift` and wrap it inside `App/Infrastructure/Supabase/`
-- Design auth flows (Sign in with Apple, email magic link)
+- Design auth flows (currently email + password — see §6)
 - Write seed data and run the local Supabase stack to verify migrations
 
 ### What the human owner must do (one-time)
@@ -129,16 +129,54 @@ App reads `Bundle.main.infoDictionary["SUPABASE_URL"]` at runtime.
 
 ## 6. Auth
 
-- **Sign in with Apple** (first — App Store requires it when offering
-  any third-party login)
-- **Google Sign-in** (second — Supabase OAuth built-in)
-- **Facebook Sign-in** (third — Meta review process can be slow, do
-  last)
-- All three go through **Supabase Auth** — the app never handles
-  tokens or OAuth flows directly.
-- Identity is per-user, but role (teacher / student) is
-  **per-Membership**, not stored on the auth user. See
-  `docs/architecture.md` §3.
+### Current state — email + password only
+
+The app currently uses **Supabase Auth's email + password provider**
+exclusively (`AuthClient.signIn(email:password:)` /
+`signUp(email:password:)`). Implemented in
+`App/Presentation/Auth/LoginView.swift` and `LoginViewModel.swift`,
+gated by `RootView`.
+
+This is App Store compliant on its own (rule 4.8 only kicks in once
+*any* third-party social login is offered).
+
+### Deferred — social logins
+
+The original plan called for Sign in with Apple → Google → Facebook in
+that order. All three are **deferred**. Add them only when one of these
+triggers:
+
+- A real user-acquisition need surfaces (e.g. friction at sign-up
+  becomes measurable)
+- An existing user requests OAuth login from a specific provider
+- Phase 4 (App Store readiness) — re-evaluate once the MVP is shipping
+
+If/when re-introducing social logins, the order is non-negotiable
+because of App Store rule 4.8: **Sign in with Apple must be added
+before, or at the same time as, Google or Facebook.** Adding Google
+without Apple = guaranteed rejection.
+
+When that day comes:
+- **Apple** uses `ASAuthorizationAppleIDProvider` + `signInWithIdToken`
+  on `AuthClient`. Requires Apple Developer team configuration (Service
+  ID + key in dev portal) and the "Sign in with Apple" capability on
+  the app target.
+- **Google** uses `signInWithOAuth(provider: .google)` — needs the
+  Google client ID configured in the Supabase dashboard and a reverse
+  client ID URL scheme in `Info.plist`.
+- **Facebook** — same OAuth pattern via Supabase. Meta's app review can
+  take weeks; allow lead time before any submission deadline.
+
+Email + password should be retained alongside any social login for two
+reasons: (a) it is the only path that works in CI / UI tests without a
+real Apple ID, and (b) some users prefer it.
+
+### Identity model (unchanged)
+
+All auth providers (current and future) go through **Supabase Auth** —
+the app never handles tokens or OAuth flows directly. Identity is
+per-user, but role (teacher / student) is **per-Membership**, not
+stored on the auth user. See `docs/architecture.md` §3.
 
 ---
 
