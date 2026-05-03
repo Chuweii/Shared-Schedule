@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Auth
+import PostgREST
 @testable import Shared_Schedule
 
 // All Supabase integration tests live under one parent so `.serialized`
@@ -126,9 +127,9 @@ struct SupabaseIntegrationTests {
             #expect(!bSchedules.contains(where: { $0.id == scheduleID }))
         }
 
-        @Test("Given user A owns a schedule, when user B tries to filter by user A's ownerID, then RLS strips the row and result is empty")
-        func userBFiltersByUserAOwnerID_rlsReturnsEmpty() async throws {
-            // Given
+        @Test("Given user A owns a schedule B has no membership to, when user B filters by user A's ownerID, then RLS strips that specific schedule from the result")
+        func userBFiltersByUserAOwnerID_rlsHidesNonMemberSchedules() async throws {
+            // Given: A owns a fresh schedule that B is NOT a member of
             let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
             let repo = SupabaseScheduleRepository()
             let scheduleID = ScheduleID(UUID())
@@ -143,8 +144,12 @@ struct SupabaseIntegrationTests {
             _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
             let leak = try await repo.fetchAll(ownedBy: UserID(userAID.uuidString))
 
-            // Then
-            #expect(leak.isEmpty)
+            // Then: the freshly created schedule must not be visible to B.
+            // Note: with Phase 3a's `member_select` policy, B *may* see other
+            // schedules of A's that B has a membership to — so we can no
+            // longer assert `leak.isEmpty`. The contract that matters is
+            // that this specific non-member schedule stays hidden.
+            #expect(!leak.contains(where: { $0.id == scheduleID }))
         }
 
         @Test("Given user A owns a schedule, when user B fetches by that schedule's ID directly, then RLS returns nil")
@@ -272,6 +277,166 @@ struct SupabaseIntegrationTests {
                     createdAt: createdAt
                 ))
             }
+        }
+    }
+
+    // MARK: - SupabaseInvitationRepository.redeem (RPC + RLS)
+
+    @Suite(.serialized) struct Redemption {
+
+        @Test("INT-R1. User B redeem user A 的 valid token，建立 membership 並回 InvitationRedemption")
+        func redeemValidToken_createsMembershipAndReturnsRedemption() async throws {
+            // Given: user A own X、save invitation Y for X
+            let (scheduleID, invitation) = try await Self.seedScheduleAndInvitation(
+                titlePrefix: "INT-R1"
+            )
+
+            // When: user B redeems
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let invitationRepo = SupabaseInvitationRepository()
+            let redemption = try await invitationRepo.redeem(token: invitation.token)
+
+            // Then: result fields populate
+            #expect(redemption.scheduleID == scheduleID)
+            // joinedAt should be very close to now (within 30s — generous to
+            // cover round-trip + clock skew of local supabase container).
+            #expect(abs(redemption.joinedAt.timeIntervalSinceNow) < 30)
+        }
+
+        @Test("INT-R2. Redeem 已過期 token，throws .expired")
+        func redeemExpiredToken_throwsExpired() async throws {
+            // Given: user A creates schedule, then we raw-INSERT an expired
+            // invitation (bypassing the Domain `expiresAt > createdAt`
+            // guard — DB CHECK is `expires_at > created_at` which we honor
+            // by setting created_at even further in the past).
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let scheduleID = ScheduleID()
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "INT-R2 expired \(UUID().uuidString.prefix(8))"
+            ))
+            let token = Self.uniqueToken()
+            try await Self.rawInsertExpiredInvitation(
+                scheduleID: scheduleID,
+                token: token
+            )
+
+            // When: user B redeems the expired token
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let invitationRepo = SupabaseInvitationRepository()
+
+            // Then
+            await #expect(throws: InvitationRedemptionError.expired) {
+                _ = try await invitationRepo.redeem(token: token)
+            }
+        }
+
+        @Test("INT-R3. 同 user 第二次 redeem 同 token，throws .alreadyMember")
+        func redeemTwiceSameUser_throwsAlreadyMember() async throws {
+            // Given: A creates X + invitation, B redeems once successfully
+            let (_, invitation) = try await Self.seedScheduleAndInvitation(
+                titlePrefix: "INT-R3"
+            )
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let invitationRepo = SupabaseInvitationRepository()
+            _ = try await invitationRepo.redeem(token: invitation.token)
+
+            // When: B redeems the same token again
+            // Then
+            await #expect(throws: InvitationRedemptionError.alreadyMember) {
+                _ = try await invitationRepo.redeem(token: invitation.token)
+            }
+        }
+
+        @Test("INT-R4. Owner self-redeem 自己 schedule 的 token，throws .selfRedemption")
+        func ownerSelfRedeem_throwsSelfRedemption() async throws {
+            // Given: A creates X + invitation Y (still on user A's session)
+            let (_, invitation) = try await Self.seedScheduleAndInvitation(
+                titlePrefix: "INT-R4"
+            )
+            // Stay as user A — owner attempts to redeem their own token
+            let invitationRepo = SupabaseInvitationRepository()
+
+            // Then
+            await #expect(throws: InvitationRedemptionError.selfRedemption) {
+                _ = try await invitationRepo.redeem(token: invitation.token)
+            }
+        }
+
+        // MARK: - Helpers
+
+        /// As user A, create a fresh schedule and a fresh valid invitation
+        /// for it. Returns the scheduleID and the invitation. Leaves the
+        /// session as user A — caller switches to user B as needed.
+        private static func seedScheduleAndInvitation(
+            titlePrefix: String
+        ) async throws -> (ScheduleID, Invitation) {
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID()
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "\(titlePrefix) \(UUID().uuidString.prefix(8))"
+            ))
+            let createdAt = Date()
+            let invitation = try Invitation(
+                scheduleID: scheduleID,
+                token: uniqueToken(),
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            )
+            try await invitationRepo.save(invitation)
+            return (scheduleID, invitation)
+        }
+
+        /// Crockford-safe random 8-char token built from a UUID prefix —
+        /// avoids relying on `InvitationToken.generate()` so test failures
+        /// are reproducible from the seed string.
+        private static func uniqueToken() -> InvitationToken {
+            let raw = UUID().uuidString
+                .replacingOccurrences(of: "-", with: "")
+                .uppercased()
+                .filter { InvitationToken.alphabetSet.contains($0) }
+                .prefix(8)
+                .padding(toLength: 8, withPad: "Z", startingAt: 0)
+            return try! InvitationToken(raw)
+        }
+
+        /// Raw INSERT bypassing Domain's `expiresAt > createdAt` invariant
+        /// while still satisfying the DB CHECK by pushing `created_at`
+        /// further into the past than `expires_at`. Required because the
+        /// Domain layer (correctly) refuses to construct an already-expired
+        /// invitation. Must run while signed in as the schedule's owner so
+        /// the `owner_insert` RLS policy on `invitations` allows it.
+        private static func rawInsertExpiredInvitation(
+            scheduleID: ScheduleID,
+            token: InvitationToken
+        ) async throws {
+            struct ExpiredInvitationDTO: Codable, Sendable {
+                let id: UUID
+                let scheduleId: UUID
+                let token: String
+                let expiresAt: String
+                let createdAt: String
+            }
+            let now = Date()
+            let dto = ExpiredInvitationDTO(
+                id: UUID(),
+                scheduleId: scheduleID.rawValue,
+                token: token.rawValue,
+                expiresAt: ScheduleMapper.formatTimestamptz(now.addingTimeInterval(-86400)),     // -1 day
+                createdAt: ScheduleMapper.formatTimestamptz(now.addingTimeInterval(-172800))    // -2 days
+            )
+            let session = try await SupabaseClientProvider.auth.session
+            try await SupabaseClientProvider
+                .database(accessToken: session.accessToken)
+                .from("invitations")
+                .insert(dto)
+                .execute()
         }
     }
 

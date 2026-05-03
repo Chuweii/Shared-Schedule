@@ -102,18 +102,29 @@ token 進剪貼簿（觸覺回饋）
 
 ```
 ScheduleListView
-  ↓ toolbar 多一顆「輸入邀請碼」按鈕
-RedeemSheet（Slice 2 才實作）
-  ├─ 文字輸入框（8 字元、auto-uppercase、monospace）
-  └─ 「加入課表」按鈕
-  ↓ 輸入 token、按確認
-  ├─ 成功：sheet dismiss → 自動 navigate 到該 schedule 的 calendar
-  └─ 失敗：inline error
-       ├─ 邀請碼不存在
-       ├─ 邀請碼已過期
-       ├─ 你是該課表的老師
-       └─ 你已經加入過此課表
+  ↓ toolbar 多一顆「輸入邀請碼」按鈕（envelope.badge icon）
+  ↓ 或 empty state 上的 secondary CTA「輸入邀請碼」
+RedeemInvitationSheet
+  ├─ 【輸入狀態】
+  │   ├─ 文字輸入框（8 字元、即時 auto-uppercase + Crockford filter、monospace）
+  │   ├─ 副說明：邀請碼共 8 個英數字元
+  │   └─ 「加入課表」按鈕（disabled until input.count == 8）
+  │   ↓ 按「加入課表」
+  │   ├─ 成功 → 切換到【成功狀態】
+  │   └─ 失敗 → inline error 顯示在輸入框下方，輸入內容保留
+  │       ├─ 邀請碼不存在
+  │       ├─ 邀請碼已過期
+  │       ├─ 你是這份課表的老師
+  │       ├─ 你已加入過此課表
+  │       └─ 加入失敗，請稍後再試（一般 persistence 失敗 fallback）
+  └─ 【成功狀態】
+      ├─ ✓ 已加入「<課表名稱>」
+      └─ 「完成」按鈕 → dismiss sheet 回到 ScheduleListView
 ```
+
+> 成功後 Slice 2 不做 navigation；學生 dismiss 後會在 ScheduleListView
+> 的「我加入的」section 看到該 schedule（Slice 3 才落地此 section；
+> 在 Slice 3 完成前，學生 dismiss 後 list 上不會顯示——這是預期、非 bug）。
 
 ### Student 看自己加入的 schedule
 
@@ -187,12 +198,41 @@ ScheduleListView（Slice 3 改）
 
 ### Slice 2 — Student redeem invitation
 
-> 細節留 Slice 2 plan，這裡只列輪廓
+#### Usecase — RedeemInvitationUseCase (6)
 
-- Domain：Membership 結構驗證
-- Usecase：RedeemInvitationUseCase（5 個：valid / invalidToken / expired / selfRedemption / alreadyMember）
-- ViewModel：RedeemInvitationViewModel（5 個）
-- Infrastructure：擴 SupabaseIntegrationTests 加 Redemption sub-suite
+| # | Scenario | 結果 |
+|---|---|---|
+| R1 | Valid token、非 owner、未加入 | 回傳 Schedule X |
+| R2 | Token 不存在 | throws `.invalidToken` |
+| R3 | Token 已過期 | throws `.expired` |
+| R4 | Current user 是 schedule owner | throws `.selfRedemption` |
+| R5 | Current user 已是 member | throws `.alreadyMember` |
+| R6 | Redeem 成功但後續 schedule fetch 失敗 | throws `.persistenceFailure` |
+
+#### Infrastructure 整合測試 (4，打 local Supabase)
+
+| # | Scenario | 結果 |
+|---|---|---|
+| INT-R1 | User B redeem user A 的 valid token | memberships 多一筆，回傳 InvitationRedemption |
+| INT-R2 | Redeem 已過期 token | RPC 拋 EXPIRED → repo 拋 `.expired` |
+| INT-R3 | 同 user 第二次 redeem 同 token | RPC 拋 ALREADY_MEMBER → repo 拋 `.alreadyMember` |
+| INT-R4 | Owner self-redeem 自己 schedule 的 token | RPC 拋 SELF_REDEMPTION → repo 拋 `.selfRedemption` |
+
+#### ViewModel — RedeemInvitationViewModel (7)
+
+| # | Scenario | 結果 |
+|---|---|---|
+| VN1 | `normalize` 處理小寫 + 標點 + 過濾非 Crockford 字元 | "abcd-12 34!o" → "ABCD1234" |
+| VN2 | `normalize` 截斷至 8 字元 | "ABCDEFGHJKMN" → "ABCDEFGH" |
+| V1 | `updateInput` 正規化並清掉 inlineError | input 變大寫，inlineError = nil |
+| V2 | `didTapSubmit` 在 input 不到 8 字元時 no-op | usecase 沒被呼叫 |
+| V3 | `didTapSubmit` 成功 | success.schedule = X、isSubmitting = false |
+| V4 | `didTapSubmit` invalidToken | inlineError 設定，input 保留，success = nil |
+| V5 | `didTapSubmit` alreadyMember | inlineError 訊息對應 |
+
+> Membership 不寫 Domain test：無 invariant、struct init 是 compiler-enforced。
+
+**Slice 2 合計 17 個測試。**
 
 ### Slice 3 — Student 看 joined schedules
 

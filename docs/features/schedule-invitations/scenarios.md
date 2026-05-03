@@ -223,26 +223,180 @@ Then  vm.invitations == [existing]（不變），
 
 ---
 
-## Slice 2 — Student redeem invitation（暫列輪廓）
+## Slice 2 — Student redeem invitation ★
 
-### Domain — Membership (1)
-- M1：建立 Membership，欄位完整
+> Membership 不寫 Domain test（無 invariant、struct init 是 compiler-enforced）。
+> 原 M1「建立 Membership 欄位完整」已移除。
 
-### Usecase — RedeemInvitationUseCase (5)
-- R1：valid token + 非 owner + 未加入 → 回傳 ScheduleID
-- R2：token 不存在 → throws `.invalidToken`
-- R3：token 已過期 → throws `.expired`
-- R4：current user 是該 schedule owner → throws `.selfRedemption`
-- R5：current user 已是 member → throws `.alreadyMember`
+### Usecase — RedeemInvitationUseCase (6) ★
 
-### Infrastructure 整合 (4)
-- INT-R1：valid token redeem 成功 → memberships 多一筆
-- INT-R2：expired token redeem → RPC 拋 EXPIRED
-- INT-R3：第二次 redeem 同 token 同人 → RPC 拋 ALREADY_MEMBER
-- INT-R4：owner self-redeem → RPC 拋 SELF_REDEMPTION
+> Fake `InvitationRepository`（in-memory + `redeemResultToReturn` /
+> `redeemErrorToThrow`）+ `InMemoryScheduleRepository`（既有）。
 
-### ViewModel — RedeemInvitationViewModel (5)
-- 文字輸入、空輸入、各種錯誤 inline 顯示、成功流程
+#### R1. Valid token、非 owner、未加入，回傳 Schedule
+
+```
+Given fake invitation repo redeem 回傳 InvitationRedemption(scheduleID: X, ...)，
+      InMemoryScheduleRepository 已有 Schedule X
+When  呼叫 redeemInvitation(token: T)
+Then  回傳 Schedule X
+```
+
+#### R2. Token 不存在，throws .invalidToken
+
+```
+Given fake invitation repo redeem throws .invalidToken
+When  呼叫 redeemInvitation(token: T)
+Then  throws .invalidToken
+```
+
+#### R3. Token 已過期，throws .expired
+
+```
+Given fake invitation repo redeem throws .expired
+When  呼叫 redeemInvitation(token: T)
+Then  throws .expired
+```
+
+#### R4. Current user 是 schedule owner，throws .selfRedemption
+
+```
+Given fake invitation repo redeem throws .selfRedemption
+When  呼叫 redeemInvitation(token: T)
+Then  throws .selfRedemption
+```
+
+#### R5. Current user 已是 member，throws .alreadyMember
+
+```
+Given fake invitation repo redeem throws .alreadyMember
+When  呼叫 redeemInvitation(token: T)
+Then  throws .alreadyMember
+```
+
+#### R6. Redeem 成功但後續 schedule fetch 失敗，throws .persistenceFailure
+
+```
+Given fake invitation repo redeem 回傳 InvitationRedemption(scheduleID: X, ...)，
+      但 scheduleRepository.fetch(id: X) 拋錯
+When  呼叫 redeemInvitation(token: T)
+Then  throws .persistenceFailure
+```
+
+### Infrastructure 整合測試 (4) ★
+
+> 擴 `SupabaseIntegrationTests` 加 `Redemption` sub-suite，沿用既有
+> `@Suite(.serialized)` + `signIn(email:)` helper。
+
+#### INT-R1. User B redeem user A 的 valid token，創出 membership 並回 redemption
+
+```
+Given user A 已 own schedule X 並 save invitation Y(token=T) 給 X
+      切換登入到 user B
+When  SupabaseInvitationRepository.redeem(token: T)
+Then  回傳 InvitationRedemption(scheduleID = X, joinedAt 接近 now)
+      memberships 表多一筆 (user_id = B, schedule_id = X, invitation_id = Y)
+```
+
+#### INT-R2. Redeem 已過期 token，throws .expired
+
+```
+Given 直接 raw INSERT 一筆 invitation Y(expires_at = now()-1day)
+      （繞過 Domain 的 expiresAt > createdAt 限制；
+        DB CHECK 是 expires_at > created_at、用更早的 created_at 過關）
+      切換登入到 user B
+When  SupabaseInvitationRepository.redeem(token: T)
+Then  throws RedeemInvitationError.expired
+```
+
+#### INT-R3. 同 user 第二次 redeem 同 token，throws .alreadyMember
+
+```
+Given INT-R1 流程跑完（user B 已是 X 的 member）
+When  user B 再呼叫 redeem(token: T)
+Then  throws RedeemInvitationError.alreadyMember
+```
+
+#### INT-R4. Owner self-redeem 自己 schedule 的 token，throws .selfRedemption
+
+```
+Given user A own schedule X 並 save invitation Y(token=T) for X
+      （仍用 user A 的 session）
+When  SupabaseInvitationRepository.redeem(token: T)
+Then  throws RedeemInvitationError.selfRedemption
+```
+
+> 不再單獨測 INVALID_TOKEN（PG 端純粹 lookup 行為，INT-R1 已驗 RPC 連通性）。
+
+### ViewModel — RedeemInvitationViewModel (7) ★
+
+> 用 `FakeRedeemInvitationUseCase`（resultToReturn / errorToThrow）。
+
+#### VN1. normalize 處理小寫、標點、過濾非 Crockford 字元
+
+```
+Given raw = "abcd-12 34!o"（含 lowercase / dash / space / 驚嘆號 / Crockford 字母表外的 'O'）
+When  RedeemInvitationViewModel.normalize(raw)
+Then  回傳 "ABCD1234"
+```
+
+#### VN2. normalize 截斷至 8 字元
+
+```
+Given raw = "ABCDEFGHJKMN"（12 字元）
+When  RedeemInvitationViewModel.normalize(raw)
+Then  回傳 "ABCDEFGH"（前 8 字元）
+```
+
+#### V1. updateInput 正規化並清掉先前的 inlineError
+
+```
+Given vm.inlineError = "redeemInvalidToken"
+When  vm.updateInput("abcd1234")
+Then  vm.input == "ABCD1234"，vm.inlineError == nil
+```
+
+#### V2. didTapSubmit 在 input 不到 8 字元時 no-op
+
+```
+Given vm.input == "ABC"（updateInput 之後），FakeUseCase callCount = 0
+When  await vm.didTapSubmit()
+Then  FakeUseCase.callCount == 0，vm.success == nil，vm.inlineError == nil
+```
+
+#### V3. didTapSubmit 成功，success state 設定為對應 Schedule
+
+```
+Given FakeUseCase.resultToReturn = Schedule X，
+      vm.updateInput("ABCD1234")
+When  await vm.didTapSubmit()
+Then  vm.success?.schedule == X，
+      vm.isSubmitting == false，
+      vm.inlineError == nil
+```
+
+#### V4. didTapSubmit invalidToken，設 inlineError、input 保留
+
+```
+Given FakeUseCase.errorToThrow = .invalidToken，
+      vm.updateInput("ABCD1234")
+When  await vm.didTapSubmit()
+Then  vm.success == nil，
+      vm.inlineError == "redeemInvalidToken"，
+      vm.input == "ABCD1234"（保留）
+```
+
+#### V5. didTapSubmit alreadyMember，inlineError 訊息對應
+
+```
+Given FakeUseCase.errorToThrow = .alreadyMember，vm.updateInput("ABCD1234")
+When  await vm.didTapSubmit()
+Then  vm.inlineError == "redeemAlreadyMember"
+```
+
+> .expired / .selfRedemption / .persistenceFailure 各自的訊息映射跟 V4/V5
+> 同形（一行 switch case），不再各加 ViewModel 測；4 個分支已在 Usecase
+> 測 R2-R5 涵蓋。**ViewModel 只挑 V4 / V5 兩個代表測 inlineError 寫入路徑**。
 
 ---
 
@@ -281,5 +435,14 @@ Then  vm.invitations == [existing]（不變），
 | V1. onAppear，repo 為空，invitations == [] | `onAppear_emptyRepo_invitationsIsEmpty()` |
 | V3. didTapGenerate 成功 | `didTapGenerate_success_prependsToList()` |
 | V4. didTapGenerate 失敗 | `didTapGenerate_failure_setsInlineError()` |
+| R1. Valid token 回傳 Schedule | `redeemInvitation_valid_returnsSchedule()` |
+| R2. Token 不存在 | `redeemInvitation_invalidToken_throwsInvalidToken()` |
+| R6. schedule fetch 失敗 | `redeemInvitation_scheduleFetchFails_throwsPersistenceFailure()` |
+| INT-R1. User B redeem user A token | `redeemValidToken_createsMembershipAndReturnsRedemption()` |
+| INT-R3. 同 user 第二次 redeem | `redeemTwiceSameUser_throwsAlreadyMember()` |
+| VN1. normalize 處理小寫 + 標點 | `normalize_lowercaseAndPunctuation_uppercasesAndFilters()` |
+| V2. didTapSubmit 不到 8 字元 | `didTapSubmit_belowEightChars_doesNothing()` |
+| V3. didTapSubmit 成功 | `didTapSubmit_success_setsSuccessStateWithSchedule()` |
+| V4. didTapSubmit invalidToken | `didTapSubmit_invalidToken_setsInlineErrorAndKeepsInput()` |
 
 剩餘 scenarios 依此命名規則延伸。
