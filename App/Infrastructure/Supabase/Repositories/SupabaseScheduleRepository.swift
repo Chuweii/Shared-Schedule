@@ -19,6 +19,16 @@ final class SupabaseScheduleRepository: ScheduleRepositoryProtocol, @unchecked S
         return dtos.map(ScheduleMapper.toDomain)
     }
 
+    func fetchAll(memberOf userID: UserID) async throws -> [Schedule] {
+        let rows: [MembershipScheduleRowDTO] = try await db()
+            .from("memberships")
+            .select("schedules!inner(*, availability_rules(*), availability_windows(*))")
+            .eq("user_id", value: userID.rawValue)
+            .execute()
+            .value
+        return rows.map(\.schedules).map(ScheduleMapper.toDomain)
+    }
+
     func fetch(id: ScheduleID) async throws -> Schedule? {
         let dtos: [ScheduleDTO] = try await db()
             .from("schedules")

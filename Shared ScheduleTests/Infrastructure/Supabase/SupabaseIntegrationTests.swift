@@ -481,4 +481,98 @@ struct SupabaseIntegrationTests {
             #expect(provider.currentUser.displayName == IntegrationTestSupport.userBEmail)
         }
     }
+
+    // MARK: - SupabaseScheduleRepository.fetchAll(memberOf:) (RLS member_select)
+
+    @Suite(.serialized) struct JoinedSchedules {
+
+        @Test("INT-J1. User B redeems A's invitation, then fetchAll(memberOf: B) returns A's schedule with rules and windows")
+        func userBFetchesMemberOf_seesUserASchedule() async throws {
+            // Given: A creates schedule X with one rule + one window, plus an invitation for X
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID(UUID())
+            let windowStart = Date(timeIntervalSince1970: 1_777_734_000)
+            var schedule = Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "INT-J1 \(UUID().uuidString.prefix(8))"
+            )
+            try schedule.addRule(
+                id: AvailabilityRuleID(UUID()),
+                weekday: .thursday,
+                startTime: try TimeOfDay(hour: 9, minute: 0),
+                endTime: try TimeOfDay(hour: 18, minute: 0)
+            )
+            try schedule.addWindow(
+                id: AvailabilityWindowID(UUID()),
+                start: windowStart,
+                end: windowStart.addingTimeInterval(3600)
+            )
+            try await scheduleRepo.save(schedule)
+            let createdAt = Date()
+            let invitation = try Invitation(
+                scheduleID: scheduleID,
+                token: Self.uniqueToken(),
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            )
+            try await invitationRepo.save(invitation)
+
+            // When: B signs in, redeems, then asks for joined schedules
+            let userBID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            _ = try await invitationRepo.redeem(token: invitation.token)
+            let joined = try await scheduleRepo.fetchAll(memberOf: UserID(userBID.uuidString))
+
+            // Then: B sees X with rules + windows intact (validates `member_select`
+            // policy on schedules / availability_rules / availability_windows)
+            let result = try #require(joined.first(where: { $0.id == scheduleID }))
+            #expect(result.title == schedule.title)
+            #expect(result.rules.count == 1)
+            #expect(result.rules.first?.weekday == .thursday)
+            #expect(result.windows.count == 1)
+            #expect(result.windows.first?.start == windowStart)
+        }
+
+        @Test("INT-J2. User B with no memberships, fetchAll(memberOf: B) returns no schedules from this scenario")
+        func userBNoMemberships_fetchesMemberOf_returnsEmpty() async throws {
+            // Given: A owns a fresh schedule that B has NOT joined (no invitation, no redemption)
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let scheduleID = ScheduleID(UUID())
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "INT-J2 \(UUID().uuidString.prefix(8))"
+            ))
+
+            // When: B signs in (without any redemption flow), asks for joined
+            let userBID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let joined = try await scheduleRepo.fetchAll(memberOf: UserID(userBID.uuidString))
+
+            // Then: this freshly-created schedule must not appear in B's joined
+            // list. Note: we cannot assert `joined.isEmpty` because earlier
+            // tests in the same DB may have left B as a member of other
+            // schedules — the contract being verified is that creating a
+            // schedule alone (no invitation/redemption) gives B nothing.
+            let leaked = joined.contains(where: { $0.id == scheduleID })
+            if leaked {
+                Issue.record("INT-J2 leak: joined contains the freshly-created schedule \(scheduleID). joined titles=\(joined.map(\.title))")
+            }
+            #expect(!leaked)
+        }
+
+        // MARK: - Helpers (mirror Redemption sub-suite's token generator)
+
+        private static func uniqueToken() -> InvitationToken {
+            let raw = UUID().uuidString
+                .replacingOccurrences(of: "-", with: "")
+                .uppercased()
+                .filter { InvitationToken.alphabetSet.contains($0) }
+                .prefix(8)
+                .padding(toLength: 8, withPad: "Z", startingAt: 0)
+            return try! InvitationToken(raw)
+        }
+    }
 }

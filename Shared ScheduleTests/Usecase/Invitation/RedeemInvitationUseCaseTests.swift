@@ -144,6 +144,7 @@ struct RedeemInvitationUseCaseTests {
 /// production code just for one test.
 private final class ThrowingFetchScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable {
     func fetchAll(ownedBy ownerID: UserID) async throws -> [Schedule] { [] }
+    func fetchAll(memberOf userID: UserID) async throws -> [Schedule] { [] }
     func fetch(id: ScheduleID) async throws -> Schedule? { throw ForcedError.forced }
     func save(_ schedule: Schedule) async throws {}
     private enum ForcedError: Error { case forced }
