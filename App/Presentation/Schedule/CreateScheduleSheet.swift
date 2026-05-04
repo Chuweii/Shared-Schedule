@@ -125,6 +125,10 @@ struct CreateScheduleSheet: View {
             listSchedulesUseCase: ListSchedulesUseCase(
                 repository: InMemoryScheduleRepository(),
                 currentUserProvider: InMemoryCurrentUserProvider()
+            ),
+            listJoinedSchedulesUseCase: ListJoinedSchedulesUseCase(
+                repository: InMemoryScheduleRepository(),
+                currentUserProvider: InMemoryCurrentUserProvider()
             )
         )
     )

@@ -8,9 +8,11 @@ struct ScheduleListViewModelRulesTests {
     private func makeSUT() -> (vm: ScheduleListViewModel, fakeCreate: FakeCreateScheduleUseCase) {
         let fakeCreate = FakeCreateScheduleUseCase()
         let fakeList = FakeListSchedulesUseCase()
+        let fakeJoined = FakeListJoinedSchedulesUseCase()
         let vm = ScheduleListViewModel(
             createScheduleUseCase: fakeCreate,
-            listSchedulesUseCase: fakeList
+            listSchedulesUseCase: fakeList,
+            listJoinedSchedulesUseCase: fakeJoined
         )
         return (vm, fakeCreate)
     }
@@ -29,8 +31,8 @@ struct ScheduleListViewModelRulesTests {
         await vm.didConfirmCreate()
 
         // Then
-        #expect(vm.schedules.count == 1)
-        #expect(vm.schedules[0].rules.count == 2)
+        #expect(vm.ownedSchedules.count == 1)
+        #expect(vm.ownedSchedules[0].rules.count == 2)
         #expect(vm.isCreateSheetPresented == false)
     }
 
@@ -49,7 +51,7 @@ struct ScheduleListViewModelRulesTests {
         // Then
         #expect(vm.inlineError == .noWeekdaysSelected)
         #expect(vm.isCreateSheetPresented == true)
-        #expect(vm.schedules.isEmpty)
+        #expect(vm.ownedSchedules.isEmpty)
     }
 
     @Test("建立後 state 重設")

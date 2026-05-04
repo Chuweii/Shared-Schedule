@@ -15,21 +15,22 @@ struct ScheduleListView: View {
         self.onSignOut = onSignOut
         self.viewModel = ScheduleListViewModel(
             createScheduleUseCase: dependencies.createScheduleUseCase,
-            listSchedulesUseCase: dependencies.listSchedulesUseCase
+            listSchedulesUseCase: dependencies.listSchedulesUseCase,
+            listJoinedSchedulesUseCase: dependencies.listJoinedSchedulesUseCase
         )
     }
 
     var body: some View {
         Group {
-            if let error = viewModel.loadError {
-                errorStateView(message: error)
-            } else if viewModel.schedules.isEmpty {
+            if viewModel.isFullScreenError {
+                fullScreenErrorView
+            } else if viewModel.isEmpty {
                 emptyStateView
             } else {
                 listView
             }
         }
-        .navigationTitle("我的課表")
+        .navigationTitle("課表")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showSettings = true } label: {
@@ -84,7 +85,7 @@ struct ScheduleListView: View {
         ContentUnavailableView {
             Label("還沒有課表", systemImage: "calendar.badge.plus")
         } description: {
-            Text("建立你的第一份課表，讓學生預約你的時間")
+            Text("建立自己的課表，或輸入邀請碼加入別人的")
         } actions: {
             VStack(spacing: 12) {
                 Button {
@@ -113,12 +114,12 @@ struct ScheduleListView: View {
         }
     }
 
-    private func errorStateView(message: LocalizedStringResource) -> some View {
+    private var fullScreenErrorView: some View {
         ContentUnavailableView {
-            Label(String(localized: message), systemImage: "exclamationmark.triangle")
+            Label(String(localized: "scheduleListLoadError"), systemImage: "exclamationmark.triangle")
         } actions: {
             Button {
-                Task { await viewModel.retry() }
+                Task { await viewModel.onAppear() }
             } label: {
                 Text("重試")
                     .font(.body.weight(.semibold))
@@ -133,13 +134,59 @@ struct ScheduleListView: View {
     }
 
     private var listView: some View {
-        List(viewModel.schedules, id: \.id) { schedule in
-            NavigationLink {
-                ScheduleCalendarView(schedule: schedule, dependencies: dependencies)
-            } label: {
-                scheduleRow(schedule)
+        List {
+            if !viewModel.ownedSchedules.isEmpty || viewModel.ownedLoadError != nil {
+                Section("我的課表") {
+                    if let err = viewModel.ownedLoadError {
+                        inlineRetryRow(message: err) {
+                            await viewModel.retryOwned()
+                        }
+                    } else {
+                        ForEach(viewModel.ownedSchedules, id: \.id) { schedule in
+                            scheduleNavigationRow(schedule)
+                        }
+                    }
+                }
+            }
+            if !viewModel.joinedSchedules.isEmpty || viewModel.joinedLoadError != nil {
+                Section("我加入的") {
+                    if let err = viewModel.joinedLoadError {
+                        inlineRetryRow(message: err) {
+                            await viewModel.retryJoined()
+                        }
+                    } else {
+                        ForEach(viewModel.joinedSchedules, id: \.id) { schedule in
+                            scheduleNavigationRow(schedule)
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private func scheduleNavigationRow(_ schedule: Schedule) -> some View {
+        NavigationLink {
+            ScheduleCalendarView(schedule: schedule, dependencies: dependencies)
+        } label: {
+            scheduleRow(schedule)
+        }
+    }
+
+    private func inlineRetryRow(message: LocalizedStringResource, retry: @escaping () async -> Void) -> some View {
+        HStack {
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(theme.textSecondary)
+            Spacer()
+            Button {
+                Task { await retry() }
+            } label: {
+                Text("重試")
+                    .font(.subheadline.weight(.medium))
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, 4)
     }
 
     private func scheduleRow(_ schedule: Schedule) -> some View {

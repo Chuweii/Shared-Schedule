@@ -13,6 +13,10 @@ nonisolated struct AppDependencies: Sendable {
         ListSchedulesUseCase(repository: repository, currentUserProvider: currentUserProvider)
     }
 
+    var listJoinedSchedulesUseCase: any ListJoinedSchedulesUseCaseProtocol {
+        ListJoinedSchedulesUseCase(repository: repository, currentUserProvider: currentUserProvider)
+    }
+
     var createInvitationUseCase: any CreateInvitationUseCaseProtocol {
         CreateInvitationUseCase(
             scheduleRepository: repository,

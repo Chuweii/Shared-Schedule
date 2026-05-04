@@ -1,9 +1,12 @@
 import Foundation
 
 @Observable
+@MainActor
 final class ScheduleListViewModel {
-    private(set) var schedules: [Schedule] = []
-    private(set) var loadError: LocalizedStringResource?
+    private(set) var ownedSchedules: [Schedule] = []
+    private(set) var joinedSchedules: [Schedule] = []
+    private(set) var ownedLoadError: LocalizedStringResource?
+    private(set) var joinedLoadError: LocalizedStringResource?
     private(set) var inlineError: CreateScheduleError?
     var isCreateSheetPresented = false
     var titleDraft = ""
@@ -12,29 +15,77 @@ final class ScheduleListViewModel {
     var ruleStartTime: Date = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
     var ruleEndTime: Date = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date()
 
+    var isFullScreenError: Bool {
+        ownedLoadError != nil
+            && joinedLoadError != nil
+            && ownedSchedules.isEmpty
+            && joinedSchedules.isEmpty
+    }
+
+    var isEmpty: Bool {
+        ownedSchedules.isEmpty
+            && joinedSchedules.isEmpty
+            && ownedLoadError == nil
+            && joinedLoadError == nil
+    }
+
+    private struct LoadResult {
+        let schedules: [Schedule]
+        let error: LocalizedStringResource?
+    }
+
     private let createScheduleUseCase: any CreateScheduleUseCaseProtocol
     private let listSchedulesUseCase: any ListSchedulesUseCaseProtocol
+    private let listJoinedSchedulesUseCase: any ListJoinedSchedulesUseCaseProtocol
 
     init(
         createScheduleUseCase: any CreateScheduleUseCaseProtocol,
-        listSchedulesUseCase: any ListSchedulesUseCaseProtocol
+        listSchedulesUseCase: any ListSchedulesUseCaseProtocol,
+        listJoinedSchedulesUseCase: any ListJoinedSchedulesUseCaseProtocol
     ) {
         self.createScheduleUseCase = createScheduleUseCase
         self.listSchedulesUseCase = listSchedulesUseCase
+        self.listJoinedSchedulesUseCase = listJoinedSchedulesUseCase
     }
 
     func onAppear() async {
-        loadError = nil
+        async let owned = fetchOwnedResult()
+        async let joined = fetchJoinedResult()
+        let (o, j) = await (owned, joined)
+        ownedSchedules = o.schedules
+        ownedLoadError = o.error
+        joinedSchedules = j.schedules
+        joinedLoadError = j.error
+    }
+
+    func retryOwned() async {
+        let result = await fetchOwnedResult()
+        ownedSchedules = result.schedules
+        ownedLoadError = result.error
+    }
+
+    func retryJoined() async {
+        let result = await fetchJoinedResult()
+        joinedSchedules = result.schedules
+        joinedLoadError = result.error
+    }
+
+    private func fetchOwnedResult() async -> LoadResult {
         do {
-            schedules = try await listSchedulesUseCase.listSchedules()
+            let schedules = try await listSchedulesUseCase.listSchedules()
+            return LoadResult(schedules: schedules, error: nil)
         } catch {
-            schedules = []
-            loadError = "scheduleListLoadError"
+            return LoadResult(schedules: [], error: "scheduleListLoadError")
         }
     }
 
-    func retry() async {
-        await onAppear()
+    private func fetchJoinedResult() async -> LoadResult {
+        do {
+            let schedules = try await listJoinedSchedulesUseCase.listJoinedSchedules()
+            return LoadResult(schedules: schedules, error: nil)
+        } catch {
+            return LoadResult(schedules: [], error: "scheduleListJoinedLoadError")
+        }
     }
 
     func didCancelCreate() {
@@ -72,7 +123,7 @@ final class ScheduleListViewModel {
                 minWindowDuration: minDurationDraft,
                 ruleTemplate: template
             )
-            schedules.append(newSchedule)
+            ownedSchedules.append(newSchedule)
             isCreateSheetPresented = false
             inlineError = nil
             resetCreateForm()
