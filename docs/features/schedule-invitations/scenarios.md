@@ -400,20 +400,123 @@ Then  vm.inlineError == "redeemAlreadyMember"
 
 ---
 
-## Slice 3 — Student 看自己加入的 schedule（暫列輪廓）
+## Slice 3 — Student 看自己加入的 schedule ★
 
-### Usecase — ListJoinedSchedulesUseCase (2)
-- J1：無 memberships → 回傳 []
-- J2：兩筆 memberships → 回傳兩個對應的 Schedule
+> Slice 3 在 `ScheduleListView` 同時呈現「我的課表」與「我加入的」兩個
+> section。`ScheduleCalendarView` 自動 read-only — Slice 1 寫的 `isOwner`
+> 已 gate 掉 toolbar 的「邀請」按鈕、calendar 本身無 edit affordance。
 
-### ViewModel — ScheduleListViewModel 修改 (3)
-- M1：載入 owned + joined 各 1 筆 → 兩個 section
-- M2：load joined 失敗 → joined 顯示 error，但 owned 仍正常
-- M3：empty owned + 1 joined → 隱藏 owned section
+### Usecase — ListJoinedSchedulesUseCase (2) ★
 
-### Infrastructure 整合 (2)
-- INT-J1：member 透過 RLS 看到自己加入的 schedule
-- INT-J2：非 member 看不到該 schedule（既有 RLS deny 測試應仍 green）
+> Fake 不需要：直接用 `InMemoryScheduleRepository` + `addMembership`
+> 測試 helper + 既有 `InMemoryCurrentUserProvider`。
+
+#### J1. 沒 membership 時查詢回傳空陣列
+
+```
+Given InMemoryRepo 沒被 addMembership(currentUser)，currentUser = teacher-001
+When  呼叫 listJoinedSchedules()
+Then  result.isEmpty
+```
+
+#### J2. 兩筆 membership 對應的 schedule 都會被回傳
+
+```
+Given repo 存兩個 owner 不是 teacher-001 的 schedule（X、Y），
+      addMembership(X.id, teacher-001), addMembership(Y.id, teacher-001),
+      另存一個第三方 schedule Z（沒有 X 也沒有 membership 連到 teacher-001）
+When  呼叫 listJoinedSchedules()
+Then  result.count == 2，titles 包含 X 與 Y
+```
+
+### ViewModel — ScheduleListViewModelTests 擴增 (4) ★
+
+> 既有 8 個 onAppear / didConfirmCreate / retry test 全數 migrate：
+> `vm.schedules` → `vm.ownedSchedules`、`vm.loadError` → `vm.ownedLoadError`、
+> `vm.retry()` → `vm.retryOwned()`、`makeSUT` 多接 joined fake。
+
+#### M1. owned + joined 都成功 — 兩個 array 都填、兩個 error nil
+
+```
+Given fakeOwned 回 [A]，fakeJoined 回 [B]
+When  await vm.onAppear()
+Then  vm.ownedSchedules.titles == ["我的瑜珈班"]
+      vm.joinedSchedules.titles == ["阿明的吉他課"]
+      vm.ownedLoadError == nil && vm.joinedLoadError == nil
+      vm.isFullScreenError == false
+```
+
+#### M2. owned 成功、joined 失敗 — 只設 joinedLoadError、不觸發 full-screen error
+
+```
+Given fakeOwned 回 [A]，fakeJoined throws
+When  await vm.onAppear()
+Then  vm.ownedSchedules.count == 1, vm.joinedSchedules.isEmpty,
+      vm.ownedLoadError == nil, vm.joinedLoadError != nil,
+      vm.isFullScreenError == false
+```
+
+#### M3. owned 為空、joined 有 1 筆 — vm.isEmpty == false（驅動「只顯示 joined section」UI）
+
+```
+Given fakeOwned 回 []，fakeJoined 回 [B]
+When  await vm.onAppear()
+Then  vm.ownedSchedules.isEmpty, vm.joinedSchedules.count == 1,
+      vm.isEmpty == false
+```
+
+#### M4. 兩邊都失敗 — 兩個 error 都設、isFullScreenError == true
+
+```
+Given 兩個 fake 都 throws
+When  await vm.onAppear()
+Then  vm.ownedLoadError != nil, vm.joinedLoadError != nil,
+      ownedSchedules.isEmpty, joinedSchedules.isEmpty,
+      vm.isFullScreenError == true
+```
+
+> Concurrent fetch flicker 風險：`onAppear` 採「兩個 fetch 都 await 完
+> 再一次性 assign」atomic 設計（`async let owned / joined` → `let (o, j)
+> = await (...)` → 一次寫入），中間態不會被 SwiftUI 渲染。
+
+### Infrastructure 整合測試 (2) ★
+
+> 擴 `SupabaseIntegrationTests` 加 `JoinedSchedules` sub-suite。
+
+#### INT-J1. user B redeem A 的 invitation 後，fetchAll(memberOf: B) 回傳 A 的 schedule（含 rules + windows）
+
+```
+Given user A 已 own schedule X with 1 rule + 1 window,
+      A 建 invitation Y for X,
+      切到 user B、redeem Y → membership 寫入
+When  以 user B 身份 SupabaseScheduleRepository.fetchAll(memberOf: B.id)
+Then  結果含 X，X.rules.count == 1，X.windows.count == 1
+      （驗 schedules / availability_rules / availability_windows 三表的
+        member_select policy 都生效）
+```
+
+#### INT-J2. user B 對沒被邀請的 schedule，fetchAll(memberOf: B) 不會看到
+
+```
+Given A own 一個全新 schedule Y（沒有任何 invitation 或 redemption）
+When  切到 user B、SupabaseScheduleRepository.fetchAll(memberOf: B.id)
+Then  !result.contains(where: { $0.id == Y.id })
+```
+
+> 不寫 `joined.isEmpty`：先前 INT-J1 / Slice 2 整合測試會在 DB 留下 B 對
+> 其他 schedule 的 membership row（test 之間不 reset），故合約是
+> 「這個沒邀請的 Y 不可見」、不是「joined 全空」。
+
+### Decoder 隔離 unit test (1) ★
+
+> 純 JSON decode 測試，不打 server，僅驗證 `MembershipScheduleRowDTO`
+> 對 PostgREST embedded resource shape 的解碼正確、`convertFromSnakeCase`
+> 有遞迴套到 `availability_rules` / `availability_windows`。失敗時可獨立
+> 排除「embedded select 寫法錯」與「DB / RLS 問題」。
+
+| # | Scenario | function name |
+|---|---|---|
+| D1 | 用 `[{schedules: {…with availability_rules + availability_windows}}]` 樣本 JSON 解出 nested 結構 | `decode_postgrestEmbeddedShape_populatesNestedRulesAndWindows()` |
 
 ---
 

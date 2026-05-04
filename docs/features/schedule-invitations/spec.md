@@ -236,11 +236,49 @@ ScheduleListView（Slice 3 改）
 
 ### Slice 3 — Student 看 joined schedules
 
-> 細節留 Slice 3 plan
+#### Usecase — ListJoinedSchedulesUseCase (2)
 
-- Usecase：ListJoinedSchedulesUseCase（2 個）
-- ViewModel：ScheduleListViewModel 改造（partition owned/joined）
-- View：兩 section、空 section 隱藏
+| # | Scenario | 結果 |
+|---|---|---|
+| J1 | 沒 membership | 回傳 [] |
+| J2 | 兩筆 membership 對應 X、Y | 回傳 [X, Y] |
+
+#### ViewModel — ScheduleListViewModelTests 擴增 (4)
+
+| # | Scenario | 結果 |
+|---|---|---|
+| M1 | owned + joined 都成功 | 兩個 array 都填、兩個 error nil、isFullScreenError == false |
+| M2 | owned 成功、joined 失敗 | 只設 joinedLoadError、isFullScreenError == false |
+| M3 | owned 為空、joined 有 1 筆 | isEmpty == false（顯示只有 joined section） |
+| M4 | 兩邊都失敗 | 兩個 error 都設、isFullScreenError == true |
+
+> 既有 8 個 ViewModel test 同步 migrate 到新 state name（`ownedSchedules` /
+> `ownedLoadError` / `retryOwned`），不增加 test 總數。
+
+#### Infrastructure 整合測試 (2，打 local Supabase)
+
+| # | Scenario | 結果 |
+|---|---|---|
+| INT-J1 | B redeem A 的 invitation 後 fetchAll(memberOf: B) | 結果含 X、rules + windows 完整 |
+| INT-J2 | A 建一個 B 沒被邀請的 schedule Y、fetchAll(memberOf: B) | !result.contains(Y) |
+
+#### DTO Decoder unit test (1)
+
+> 不打 server。`MembershipScheduleRowDTO` 對 PostgREST embedded shape
+> （`[{schedules: {…}}]`）的 decode 正確、`convertFromSnakeCase` 對 nested
+> `availability_rules / availability_windows` 有遞迴套用。
+
+**Slice 3 合計 9 個新測試**（J1-J2 + M1-M4 + INT-J1/J2 + D1）。
+
+#### UX 決策（Plan cozy-kindling-lollipop §5）
+
+- joined row UI 完全同 owned，不加 badge — section header 自帶身份訊號
+- nav title 從「我的課表」改為中性「課表」
+- empty state 描述改為中性「建立自己的課表，或輸入邀請碼加入別人的」
+- per-section 失敗：成功的 section 正常顯示、失敗的 section 顯示 inline
+  retry row；只有兩邊都失敗 + 兩邊都空時才走 full-screen error fallback
+- `ScheduleCalendarView` 完全不動：Slice 1 已經用 `isOwner` gate 掉
+  「邀請」toolbar、calendar grid 本身無 edit affordance，read-only 自動成立
 
 ## Technical Notes
 
