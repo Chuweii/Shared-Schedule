@@ -4,11 +4,18 @@ struct ScheduleCalendarView: View {
     @Environment(\.theme) private var theme
     @State private var viewModel: ScheduleCalendarViewModel
     @State private var showInviteSheet = false
+    @State private var pendingSlot: ComputedSlot?
+    @State private var pendingCancelBookingID: BookingID?
     private let dependencies: AppDependencies?
 
     init(schedule: Schedule, dependencies: AppDependencies? = nil) {
         self.dependencies = dependencies
-        self.viewModel = ScheduleCalendarViewModel(schedule: schedule)
+        self.viewModel = ScheduleCalendarViewModel(
+            schedule: schedule,
+            listMyBookingsUseCase: dependencies?.listMyBookingsUseCase,
+            createBookingUseCase: dependencies?.createBookingUseCase,
+            cancelBookingUseCase: dependencies?.cancelBookingUseCase
+        )
     }
 
     private var isOwner: Bool {
@@ -33,9 +40,19 @@ struct ScheduleCalendarView: View {
 
                     selectedDateHeader(selectedDate)
 
+                    if let inlineError = viewModel.inlineError {
+                        Text(inlineError)
+                            .font(.subheadline)
+                            .foregroundStyle(theme.textCaption)
+                            .padding(.horizontal)
+                    }
+
                     DaySlotListView(
                         date: selectedDate,
-                        slots: viewModel.selectedDaySlots
+                        presentedSlots: viewModel.presentedSlotsForSelectedDate,
+                        interactive: !isOwner,
+                        onTapAvailable: { pendingSlot = $0 },
+                        onTapCancel: { pendingCancelBookingID = $0 }
                     )
                     .padding(.horizontal)
                 }
@@ -65,7 +82,62 @@ struct ScheduleCalendarView: View {
                 ))
             }
         }
+        .confirmationDialog(
+            confirmationTitle,
+            isPresented: bookingConfirmationBinding,
+            titleVisibility: .visible
+        ) {
+            Button("預約這個時段") {
+                if let pendingSlot {
+                    Task { await viewModel.bookSlot(pendingSlot) }
+                }
+                pendingSlot = nil
+            }
+            Button("取消", role: .cancel) {
+                pendingSlot = nil
+            }
+        }
+        .alert(
+            "確定取消這筆預約？",
+            isPresented: cancelConfirmationBinding
+        ) {
+            Button("取消預約", role: .destructive) {
+                if let pendingCancelBookingID {
+                    Task { await viewModel.cancelBooking(pendingCancelBookingID) }
+                }
+                pendingCancelBookingID = nil
+            }
+            Button("取消", role: .cancel) {
+                pendingCancelBookingID = nil
+            }
+        }
         .task { await viewModel.onAppear() }
+    }
+
+    private var confirmationTitle: LocalizedStringResource {
+        if let pendingSlot {
+            let formatter = DateFormatter()
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            let startStr = formatter.string(from: pendingSlot.start)
+            let endStr = formatter.string(from: pendingSlot.end)
+            return "確定預約 \(startStr)–\(endStr)？"
+        }
+        return "確定預約？"
+    }
+
+    private var bookingConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { pendingSlot != nil },
+            set: { if !$0 { pendingSlot = nil } }
+        )
+    }
+
+    private var cancelConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { pendingCancelBookingID != nil },
+            set: { if !$0 { pendingCancelBookingID = nil } }
+        )
     }
 
     private var monthHeader: some View {
