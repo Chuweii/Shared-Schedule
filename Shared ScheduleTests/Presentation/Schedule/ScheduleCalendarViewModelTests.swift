@@ -126,4 +126,168 @@ struct ScheduleCalendarViewModelTests {
         #expect(!vm.days.isEmpty)
         #expect(vm.selectedDate == nil)
     }
+
+    // MARK: - Booking helpers
+
+    private static let teacher001 = UserID("teacher-001")
+
+    private func makeBookingSUT(
+        schedule: Schedule,
+        listResult: [Booking] = [],
+        listError: ListMyBookingsError? = nil
+    ) -> (
+        vm: ScheduleCalendarViewModel,
+        listFake: FakeListMyBookingsUseCase,
+        createFake: FakeCreateBookingUseCase,
+        cancelFake: FakeCancelBookingUseCase
+    ) {
+        let listFake = FakeListMyBookingsUseCase()
+        listFake.resultToReturn = listResult
+        listFake.errorToThrow = listError
+        let createFake = FakeCreateBookingUseCase()
+        let cancelFake = FakeCancelBookingUseCase()
+        let vm = ScheduleCalendarViewModel(
+            schedule: schedule,
+            calendar: Self.utcCalendar,
+            referenceDate: Self.date(year: 2026, month: 4, day: 1),
+            listMyBookingsUseCase: listFake,
+            createBookingUseCase: createFake,
+            cancelBookingUseCase: cancelFake
+        )
+        return (vm, listFake, createFake, cancelFake)
+    }
+
+    /// Construct a Booking matching a 1-hour slot starting at the given UTC date.
+    private static func booking(at start: Date, scheduleID: ScheduleID) throws -> Booking {
+        try Booking(
+            scheduleID: scheduleID,
+            studentID: teacher001,
+            startsAt: start,
+            endsAt: start.addingTimeInterval(3600),
+            durationSeconds: 3600
+        )
+    }
+
+    // MARK: - BCV1
+
+    @Test("BCV1. onAppear，listMyBookings 回 0 筆 → 所有 slot 為 available")
+    func onAppear_zeroBookings_allSlotsAvailable() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let (vm, listFake, _, _) = makeBookingSUT(schedule: schedule)
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        #expect(listFake.callCount == 1)
+        #expect(vm.myBookings.isEmpty)
+        let presented = vm.presentedSlotsForSelectedDate
+        #expect(presented.count == 9)
+        #expect(presented.allSatisfy { $0.state == .available })
+    }
+
+    // MARK: - BCV2
+
+    @Test("BCV2. onAppear，listMyBookings 回 1 筆 → 對應 slot 為 .mineBooked，其餘 .available")
+    func onAppear_oneBooking_matchingSlotIsMineBooked() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let myBooking = try Self.booking(at: mondayNineAM, scheduleID: schedule.id)
+        let (vm, _, _, _) = makeBookingSUT(schedule: schedule, listResult: [myBooking])
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        let presented = vm.presentedSlotsForSelectedDate
+        #expect(presented.count == 9)
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .mineBooked(myBooking.id))
+        let others = presented.filter { $0.slot.start != mondayNineAM }
+        #expect(others.allSatisfy { $0.state == .available })
+    }
+
+    // MARK: - BCV3
+
+    @Test("BCV3. bookSlot 成功 → 對應 slot 變 .mineBooked、myBookings 多 1、inlineError 清空")
+    func bookSlot_succeeds_marksSlotMineBookedAndAppendsBooking() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayTenAM = monday.addingTimeInterval(10 * 3600)
+        let resultingBooking = try Self.booking(at: mondayTenAM, scheduleID: schedule.id)
+        let (vm, _, createFake, _) = makeBookingSUT(schedule: schedule)
+        createFake.resultToReturn = resultingBooking
+        await vm.onAppear()
+        vm.selectDate(monday)
+        let targetSlot = ComputedSlot(start: mondayTenAM, end: mondayTenAM.addingTimeInterval(3600))
+
+        // When
+        await vm.bookSlot(targetSlot)
+
+        // Then
+        #expect(createFake.callCount == 1)
+        #expect(vm.myBookings.count == 1)
+        #expect(vm.myBookings.first?.id == resultingBooking.id)
+        #expect(vm.inlineError == nil)
+        let presented = vm.presentedSlotsForSelectedDate
+        let tenAMRow = try #require(presented.first { $0.slot.start == mondayTenAM })
+        #expect(tenAMRow.state == .mineBooked(resultingBooking.id))
+    }
+
+    // MARK: - BCV4
+
+    @Test("BCV4. bookSlot 失敗 .slotTaken → inlineError 設定、slot 維持 .available")
+    func bookSlot_fails_slotTaken_setsInlineErrorAndKeepsSlotAvailable() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayElevenAM = monday.addingTimeInterval(11 * 3600)
+        let (vm, _, createFake, _) = makeBookingSUT(schedule: schedule)
+        createFake.errorToThrow = .slotTaken
+        await vm.onAppear()
+        vm.selectDate(monday)
+        let targetSlot = ComputedSlot(start: mondayElevenAM, end: mondayElevenAM.addingTimeInterval(3600))
+
+        // When
+        await vm.bookSlot(targetSlot)
+
+        // Then
+        #expect(vm.inlineError != nil)
+        #expect(vm.myBookings.isEmpty)
+        let presented = vm.presentedSlotsForSelectedDate
+        let elevenAMRow = try #require(presented.first { $0.slot.start == mondayElevenAM })
+        #expect(elevenAMRow.state == .available)
+    }
+
+    // MARK: - BCV5
+
+    @Test("BCV5. cancelBooking 成功 → 對應 slot 變 .available、myBookings 少 1")
+    func cancelBooking_succeeds_revertsSlotToAvailable() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let myBooking = try Self.booking(at: mondayNineAM, scheduleID: schedule.id)
+        let (vm, _, _, cancelFake) = makeBookingSUT(schedule: schedule, listResult: [myBooking])
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // When
+        await vm.cancelBooking(myBooking.id)
+
+        // Then
+        #expect(cancelFake.callCount == 1)
+        #expect(cancelFake.lastBookingID == myBooking.id)
+        #expect(vm.myBookings.isEmpty)
+        let presented = vm.presentedSlotsForSelectedDate
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .available)
+    }
 }
