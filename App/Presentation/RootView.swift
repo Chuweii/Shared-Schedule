@@ -18,6 +18,7 @@ struct RootView: View {
                     dependencies: AppDependencies(
                         repository: SupabaseScheduleRepository(),
                         invitationRepository: SupabaseInvitationRepository(),
+                        bookingRepository: SupabaseBookingRepository(),
                         currentUserProvider: userProvider
                     ),
                     onSignOut: signOut

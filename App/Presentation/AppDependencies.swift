@@ -3,6 +3,7 @@ import Foundation
 nonisolated struct AppDependencies: Sendable {
     let repository: any ScheduleRepositoryProtocol
     let invitationRepository: any InvitationRepositoryProtocol
+    let bookingRepository: any BookingRepositoryProtocol
     let currentUserProvider: any CurrentUserProviderProtocol
 
     var createScheduleUseCase: any CreateScheduleUseCaseProtocol {
@@ -40,9 +41,29 @@ nonisolated struct AppDependencies: Sendable {
         )
     }
 
+    var createBookingUseCase: any CreateBookingUseCaseProtocol {
+        CreateBookingUseCase(
+            scheduleRepository: repository,
+            bookingRepository: bookingRepository,
+            currentUserProvider: currentUserProvider
+        )
+    }
+
+    var cancelBookingUseCase: any CancelBookingUseCaseProtocol {
+        CancelBookingUseCase(bookingRepository: bookingRepository)
+    }
+
+    var listMyBookingsUseCase: any ListMyBookingsUseCaseProtocol {
+        ListMyBookingsUseCase(
+            bookingRepository: bookingRepository,
+            currentUserProvider: currentUserProvider
+        )
+    }
+
     static let live = AppDependencies(
         repository: InMemoryScheduleRepository(),
         invitationRepository: InMemoryInvitationRepository(),
+        bookingRepository: InMemoryBookingRepository(),
         currentUserProvider: InMemoryCurrentUserProvider()
     )
 
