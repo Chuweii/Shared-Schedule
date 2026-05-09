@@ -52,7 +52,9 @@ struct ScheduleListView: View {
         .sheet(isPresented: $viewModel.isCreateSheetPresented) {
             CreateScheduleSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showRedeemSheet) {
+        .sheet(isPresented: $showRedeemSheet, onDismiss: {
+            Task { await viewModel.onAppear() }
+        }) {
             RedeemInvitationSheet(viewModel: RedeemInvitationViewModel(
                 redeemInvitationUseCase: dependencies.redeemInvitationUseCase
             ))
@@ -162,6 +164,7 @@ struct ScheduleListView: View {
                 }
             }
         }
+        .refreshable { await viewModel.onAppear() }
     }
 
     private func scheduleNavigationRow(_ schedule: Schedule) -> some View {
