@@ -82,10 +82,9 @@ struct ScheduleCalendarView: View {
                 ))
             }
         }
-        .confirmationDialog(
+        .alert(
             confirmationTitle,
-            isPresented: bookingConfirmationBinding,
-            titleVisibility: .visible
+            isPresented: bookingConfirmationBinding
         ) {
             Button("預約這個時段") {
                 if let pendingSlot {
