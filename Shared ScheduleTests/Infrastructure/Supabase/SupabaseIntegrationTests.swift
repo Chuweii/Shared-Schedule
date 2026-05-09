@@ -575,4 +575,186 @@ struct SupabaseIntegrationTests {
             return try! InvitationToken(raw)
         }
     }
+
+    // MARK: - SupabaseBookingRepository (book_slot / cancel_booking RPCs + RLS)
+
+    @Suite(.serialized) struct Bookings {
+
+        private static let scheduleID = ScheduleID(IntegrationTestSupport.seededYogaScheduleID)
+        private static let durationSeconds = 3600
+
+        @Test("BINT1. User C (seeded member) books a future slot — RPC returns the booking row")
+        func memberBooksFutureSlot_returnsBooking() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+
+            // When
+            let booking = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // Then
+            #expect(booking.scheduleID == Self.scheduleID)
+            #expect(booking.studentID.rawValue == IntegrationTestSupport.userCID.uuidString.lowercased())
+            #expect(abs(booking.startsAt.timeIntervalSince(start)) < 1)
+            #expect(abs(booking.endsAt.timeIntervalSince(end)) < 1)
+            #expect(booking.durationSeconds == Self.durationSeconds)
+        }
+
+        @Test("BINT2. Booking same (schedule, starts_at) twice — second call throws .slotTaken")
+        func sameSlotTwice_throwsSlotTaken() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            _ = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When / Then
+            await #expect(throws: CreateBookingError.slotTaken) {
+                _ = try await repo.create(
+                    scheduleID: Self.scheduleID,
+                    startsAt: start,
+                    endsAt: end,
+                    durationSeconds: Self.durationSeconds
+                )
+            }
+        }
+
+        @Test("BINT3. Owner (user A) books own schedule — throws .ownerCannotBook")
+        func ownerBooksOwnSchedule_throwsOwnerCannotBook() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+
+            // When / Then
+            await #expect(throws: CreateBookingError.ownerCannotBook) {
+                _ = try await repo.create(
+                    scheduleID: Self.scheduleID,
+                    startsAt: start,
+                    endsAt: end,
+                    durationSeconds: Self.durationSeconds
+                )
+            }
+        }
+
+        @Test("BINT4. Non-member (user B) books — throws .notMember")
+        func nonMemberBooks_throwsNotMember() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+
+            // When / Then
+            await #expect(throws: CreateBookingError.notMember) {
+                _ = try await repo.create(
+                    scheduleID: Self.scheduleID,
+                    startsAt: start,
+                    endsAt: end,
+                    durationSeconds: Self.durationSeconds
+                )
+            }
+        }
+
+        @Test("BINT5. After booking, fetchAll(scheduleID, studentID) returns the booking")
+        func fetchAllAfterBooking_returnsTheBooking() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let created = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When
+            let bookings = try await repo.fetchAll(
+                scheduleID: Self.scheduleID,
+                studentID: UserID(IntegrationTestSupport.userCID.uuidString.lowercased())
+            )
+
+            // Then
+            #expect(bookings.contains(where: { $0.id == created.id }))
+        }
+
+        @Test("BINT6. Member cancels own booking — fetchAll afterwards returns no row for that id")
+        func memberCancelsOwnBooking_rowDisappears() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let created = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When
+            try await repo.cancel(id: created.id)
+
+            // Then
+            let bookings = try await repo.fetchAll(
+                scheduleID: Self.scheduleID,
+                studentID: UserID(IntegrationTestSupport.userCID.uuidString.lowercased())
+            )
+            #expect(!bookings.contains(where: { $0.id == created.id }))
+        }
+
+        @Test("BINT7. Non-owner (user B) cancels user C's booking — throws .notOwner; row remains")
+        func nonOwnerCancels_throwsNotOwner() async throws {
+            // Given: user C books
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let created = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When: user B (no membership; never the booking owner) tries to cancel
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            await #expect(throws: CancelBookingError.notOwner) {
+                try await repo.cancel(id: created.id)
+            }
+
+            // Then: row still readable by user C
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let bookings = try await repo.fetchAll(
+                scheduleID: Self.scheduleID,
+                studentID: UserID(IntegrationTestSupport.userCID.uuidString.lowercased())
+            )
+            #expect(bookings.contains(where: { $0.id == created.id }))
+        }
+
+        // MARK: - Helpers
+
+        /// A fresh future timestamp at second precision, with a per-call
+        /// random offset so parallel xcodebuild simulator clones running
+        /// the same test name don't collide on the
+        /// `UNIQUE(schedule_id, starts_at)` constraint of the seeded
+        /// schedule. 7 days is the floor so we're never near "now".
+        private static func freshFutureSlot() -> (start: Date, end: Date) {
+            let entropySeconds = TimeInterval(abs(UUID().uuidString.hashValue) % (7 * 86_400))
+            let baseEpoch = Date().timeIntervalSince1970.rounded(.down)
+            let start = Date(
+                timeIntervalSince1970: baseEpoch + 7 * 86_400 + entropySeconds
+            )
+            return (start, start.addingTimeInterval(TimeInterval(durationSeconds)))
+        }
+    }
 }

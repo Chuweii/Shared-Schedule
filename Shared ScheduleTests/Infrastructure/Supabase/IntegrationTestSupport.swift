@@ -11,10 +11,17 @@ enum IntegrationTestSupport {
 
     static let userAEmail = "test-teacher@example.com"
     static let userBEmail = "test-teacher-b@example.com"
+    static let userCEmail = "test-student-c@example.com"
     static let testPassword = "password123"
 
     static let userAID = UUID(uuidString: "a1b2c3d4-e5f6-7890-abcd-ef1234567890")!
     static let userBID = UUID(uuidString: "b2c3d4e5-f6a7-8901-bcde-f23456789012")!
+    static let userCID = UUID(uuidString: "c3d4e5f6-a7b8-9012-cdef-345678901234")!
+
+    /// User A's "Yoga Beginner" schedule, seeded with weekday rules
+    /// 09:00–18:00 and a pre-seeded membership for user C. Used by the
+    /// Bookings sub-suite as a stable booking target.
+    static let seededYogaScheduleID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 
     private static let healthURL = URL(string: "http://127.0.0.1:54321/rest/v1/")!
     private static let publishableKey = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
