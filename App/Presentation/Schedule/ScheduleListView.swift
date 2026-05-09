@@ -38,13 +38,18 @@ struct ScheduleListView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button { showRedeemSheet = true } label: {
-                    Image(systemName: "envelope.badge")
-                }
-                .accessibilityLabel(Text("輸入邀請碼"))
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button { viewModel.isCreateSheetPresented = true } label: {
+                Menu {
+                    Button {
+                        viewModel.isCreateSheetPresented = true
+                    } label: {
+                        Label("建立課表", systemImage: "calendar.badge.plus")
+                    }
+                    Button {
+                        showRedeemSheet = true
+                    } label: {
+                        Label("加入別人的課表", systemImage: "envelope.badge")
+                    }
+                } label: {
                     Image(systemName: "plus")
                 }
             }
