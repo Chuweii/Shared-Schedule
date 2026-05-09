@@ -137,3 +137,70 @@ INSERT INTO invitations (id, schedule_id, token, expires_at) VALUES (
   'ABCD1234',
   now() + interval '7 days'
 ) ON CONFLICT (id) DO NOTHING;
+
+-- 5a. Create test user C (a student — already a member of user A's schedule
+-- via direct seed below; used by Phase 3b booking integration tests).
+-- Keeping this distinct from user B preserves the "user B has no
+-- memberships" fixture relied on by Phase 3a JoinedSchedules tests.
+INSERT INTO auth.users (
+  id,
+  instance_id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at,
+  confirmation_token,
+  email_change,
+  email_change_token_new,
+  recovery_token,
+  raw_app_meta_data,
+  raw_user_meta_data
+) VALUES (
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'test-student-c@example.com',
+  crypt('password123', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  '',
+  '',
+  '',
+  '',
+  '{"provider": "email", "providers": ["email"]}',
+  '{"display_name": "Test Student C"}'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (
+  id,
+  user_id,
+  provider_id,
+  provider,
+  identity_data,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) VALUES (
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  'test-student-c@example.com',
+  'email',
+  '{"sub": "c3d4e5f6-a7b8-9012-cdef-345678901234", "email": "test-student-c@example.com"}',
+  now(),
+  now(),
+  now()
+) ON CONFLICT (provider_id, provider) DO NOTHING;
+
+-- 5b. User C is a member of user A's Yoga Beginner schedule. invitation_id
+-- is NULL because this membership is seeded directly (not via redeem flow).
+INSERT INTO memberships (id, schedule_id, user_id, invitation_id) VALUES (
+  '99999999-9999-9999-9999-999999999999',
+  '11111111-1111-1111-1111-111111111111',
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  NULL
+) ON CONFLICT (id) DO NOTHING;
