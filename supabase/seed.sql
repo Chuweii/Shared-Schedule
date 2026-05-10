@@ -204,3 +204,13 @@ INSERT INTO memberships (id, schedule_id, user_id, invitation_id) VALUES (
   'c3d4e5f6-a7b8-9012-cdef-345678901234',
   NULL
 ) ON CONFLICT (id) DO NOTHING;
+
+-- 6. User profiles (Phase 4 Slice A) — display_name aligned with each
+-- user's raw_user_meta_data. Without these rows the integration tests
+-- that read `currentUser.displayName` after sign-in would fall back to
+-- email and assertions would break. ON CONFLICT keeps seed idempotent.
+INSERT INTO user_profiles (user_id, display_name) VALUES
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Test Teacher A'),
+  ('b2c3d4e5-f6a7-8901-bcde-f23456789012', 'Test Teacher B'),
+  ('c3d4e5f6-a7b8-9012-cdef-345678901234', 'Test Student C')
+ON CONFLICT (user_id) DO NOTHING;
