@@ -56,6 +56,8 @@ struct DaySlotListView: View {
             bookedRow(presented.slot, bookingID: bookingID)
         case .bookedByStudent(let email):
             bookedByStudentRow(presented.slot, email: email)
+        case .bookedByOther:
+            bookedByOtherRow(presented.slot)
         }
     }
 
@@ -121,6 +123,21 @@ struct DaySlotListView: View {
         .padding(.vertical, 10)
         .background(theme.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func bookedByOtherRow(_ slot: ComputedSlot) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            timeRange(slot)
+            Spacer()
+            Text("已被預約")
+                .font(.caption)
+                .foregroundStyle(theme.textCaption)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(theme.bgSecondary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .opacity(0.6)
     }
 
     private func timeRange(_ slot: ComputedSlot) -> some View {

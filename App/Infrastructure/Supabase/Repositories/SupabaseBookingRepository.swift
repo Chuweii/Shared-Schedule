@@ -19,6 +19,10 @@ final class SupabaseBookingRepository: BookingRepositoryProtocol, @unchecked Sen
         let targetScheduleId: UUID
     }
 
+    private struct GetBookingsVisibleToMemberParams: Encodable, Sendable {
+        let targetScheduleId: UUID
+    }
+
     private func db() async throws -> PostgrestClient {
         let session = try await SupabaseClientProvider.auth.session
         return SupabaseClientProvider.database(accessToken: session.accessToken)
@@ -104,5 +108,25 @@ final class SupabaseBookingRepository: BookingRepositoryProtocol, @unchecked Sen
         }
 
         return dtos.compactMap(BookingMapper.toOwnerBooking)
+    }
+
+    func fetchOthersBookings(
+        scheduleID: ScheduleID
+    ) async throws(ListOthersBookingsError) -> [BookedSlot] {
+        let params = GetBookingsVisibleToMemberParams(targetScheduleId: scheduleID.rawValue)
+
+        let dtos: [BookedSlotDTO]
+        do {
+            dtos = try await db()
+                .rpc("get_bookings_visible_to_member", params: params)
+                .execute()
+                .value
+        } catch let pg as PostgrestError {
+            throw BookingMapper.mapVisibleFetchError(pg)
+        } catch {
+            throw .persistenceFailure
+        }
+
+        return dtos.compactMap(BookingMapper.toBookedSlot)
     }
 }

@@ -794,5 +794,132 @@ struct SupabaseIntegrationTests {
                 _ = try await repo.fetchAllForOwner(scheduleID: Self.scheduleID)
             }
         }
+
+        // MARK: - Cross-student visibility (Slice 2)
+
+        /// As user A, create a fresh schedule and one valid invitation
+        /// (which any non-owner can redeem multiple times — different
+        /// users share the same token per Phase 3a `redeem_invitation`
+        /// semantics). Used by BINT-V tests so each test owns its own
+        /// schedule + can grant memberships without polluting the
+        /// seeded `userCID` ↔ `seededYogaScheduleID` fixture.
+        private static func seedFreshScheduleAndInvitation(
+            titlePrefix: String
+        ) async throws -> (ScheduleID, Invitation) {
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID()
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "\(titlePrefix) \(UUID().uuidString.prefix(8))"
+            ))
+            let createdAt = Date()
+            let raw = UUID().uuidString
+                .replacingOccurrences(of: "-", with: "")
+                .uppercased()
+                .filter { InvitationToken.alphabetSet.contains($0) }
+                .prefix(8)
+                .padding(toLength: 8, withPad: "Z", startingAt: 0)
+            let invitation = try Invitation(
+                scheduleID: scheduleID,
+                token: try InvitationToken(raw),
+                expiresAt: createdAt.addingTimeInterval(60 * 60 * 24 * 7),
+                createdAt: createdAt
+            )
+            try await invitationRepo.save(invitation)
+            return (scheduleID, invitation)
+        }
+
+        @Test("BINT-V1. Member sees other members' booking as sanitized BookedSlot")
+        func memberSeesOthersBooking_returnsSanitized() async throws {
+            // Given: A owns fresh schedule X; both B and C redeem the
+            // same invitation and become members of X.
+            let (scheduleID, invitation) = try await Self.seedFreshScheduleAndInvitation(
+                titlePrefix: "BINT-V1"
+            )
+            let invitationRepo = SupabaseInvitationRepository()
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            _ = try await invitationRepo.redeem(token: invitation.token)
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            _ = try await invitationRepo.redeem(token: invitation.token)
+
+            // C books a future slot on X.
+            let bookingRepo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            _ = try await bookingRepo.create(
+                scheduleID: scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When: B asks for others' bookings on X.
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let result = try await bookingRepo.fetchOthersBookings(scheduleID: scheduleID)
+
+            // Then: exactly the slot C booked surfaces; BookedSlot's type
+            // shape inherently has no booking_id / student_id / email,
+            // and the RPC's RETURN TABLE signature (verified at migration
+            // time) is the security boundary that guarantees nothing else
+            // can leak through this path.
+            let visible = try #require(result.first(where: { abs($0.startsAt.timeIntervalSince(start)) < 1 }))
+            #expect(abs(visible.endsAt.timeIntervalSince(end)) < 1)
+            #expect(visible.durationSeconds == Self.durationSeconds)
+        }
+
+        @Test("BINT-V2. Caller's own booking is filtered out of fetchOthersBookings")
+        func callerOwnBooking_filteredOut() async throws {
+            // Given: C is a member (seeded) of the seeded schedule and
+            // books a slot on it.
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let bookingRepo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let mine = try await bookingRepo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When: C asks for others' bookings on the same schedule.
+            let result = try await bookingRepo.fetchOthersBookings(scheduleID: Self.scheduleID)
+
+            // Then: C's own booking is not in the result (RPC's
+            // `student_id <> auth.uid()` filter).
+            #expect(!result.contains(where: { abs($0.startsAt.timeIntervalSince(mine.startsAt)) < 1 }))
+        }
+
+        @Test("BINT-V3. Non-member calls fetchOthersBookings — throws .notMember")
+        func nonMemberFetchOthers_throwsNotMember() async throws {
+            // Given: A owns a fresh schedule X (no invitations redeemed
+            // by B → B is not a member of X).
+            let (scheduleID, _) = try await Self.seedFreshScheduleAndInvitation(
+                titlePrefix: "BINT-V3"
+            )
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userBEmail)
+            let bookingRepo = SupabaseBookingRepository()
+
+            // When / Then
+            await #expect(throws: ListOthersBookingsError.notMember) {
+                _ = try await bookingRepo.fetchOthersBookings(scheduleID: scheduleID)
+            }
+        }
+
+        @Test("BINT-V4. Owner (non-member of own schedule) calls fetchOthersBookings — throws .notMember")
+        func ownerFetchOthers_throwsNotMember() async throws {
+            // Given: A is the owner of the seeded schedule but holds no
+            // membership row on it (owners are not members in this app
+            // model). Owners are expected to use fetchAllForOwner — the
+            // member-only RPC pre-emptively rejects them.
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let bookingRepo = SupabaseBookingRepository()
+
+            // When / Then
+            await #expect(throws: ListOthersBookingsError.notMember) {
+                _ = try await bookingRepo.fetchOthersBookings(scheduleID: Self.scheduleID)
+            }
+        }
     }
 }

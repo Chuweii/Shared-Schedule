@@ -31,4 +31,14 @@ protocol BookingRepositoryProtocol: Sendable {
     func fetchAllForOwner(
         scheduleID: ScheduleID
     ) async throws(ListAllBookingsForOwnerError) -> [OwnerBooking]
+
+    /// Member-only: time-only view of *other* students' bookings on the
+    /// schedule (Slice 2). Backed by `get_bookings_visible_to_member`
+    /// RPC, which pre-projects to `(starts_at, ends_at, duration_seconds)`
+    /// and filters out the caller's own bookings — no PII ever crosses
+    /// this boundary. RPC `RAISE EXCEPTION 'NOT_MEMBER'` for non-members
+    /// (including owners, who should use `fetchAllForOwner` instead).
+    func fetchOthersBookings(
+        scheduleID: ScheduleID
+    ) async throws(ListOthersBookingsError) -> [BookedSlot]
 }

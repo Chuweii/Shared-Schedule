@@ -68,4 +68,23 @@ enum BookingMapper {
         if message.contains("NOT_OWNER") { return .notOwner }
         return .persistenceFailure
     }
+
+    static func toBookedSlot(_ dto: BookedSlotDTO) -> BookedSlot? {
+        guard
+            let startsAt = ScheduleMapper.parseTimestamptz(dto.startsAt),
+            let endsAt = ScheduleMapper.parseTimestamptz(dto.endsAt)
+        else { return nil }
+
+        return try? BookedSlot(
+            startsAt: startsAt,
+            endsAt: endsAt,
+            durationSeconds: dto.durationSeconds
+        )
+    }
+
+    static func mapVisibleFetchError(_ pg: PostgrestError) -> ListOthersBookingsError {
+        let message = pg.localizedDescription
+        if message.contains("NOT_MEMBER") { return .notMember }
+        return .persistenceFailure
+    }
 }

@@ -199,7 +199,7 @@
 **When** cancelBooking(bookingID)
 **Then** 對應 slot 退回 `.available`、myBookings 少 1、cancel.callCount == 1
 
-## Test 數量總計
+## Test 數量總計（Slice 1）
 
 | 層 | 數量 |
 |---|---|
@@ -209,4 +209,122 @@
 | Usecase List (BL) | 3 |
 | Infrastructure (BINT) | 7 |
 | ViewModel (BCV) | 5 |
-| **合計** | **34** |
+| **Slice 1 合計** | **34** |
+
+---
+
+## Slice 2 增量（2026-05-10 加入）
+
+> 代碼前綴：BSD = BookedSlot Domain、BO = ListOthersBookings Usecase、
+> BINT-V = visibility 整合、BCV8+ = ViewModel cross-student 增量
+> （Slice 1.5 已先佔用 BCV6/BCV7 為 owner-mode 測試，Slice 2 從 BCV8
+> 起算以免衝突）。
+
+### Domain — BookedSlot（4）
+
+#### BSD1
+**Given** endsAt > startsAt 且 duration_seconds 與時長匹配
+**When** 建立 BookedSlot
+**Then** 建立成功、所有欄位回填
+
+#### BSD2
+**Given** endsAt == startsAt
+**When** 建立 BookedSlot
+**Then** throws `BookingError.invalidRange`
+
+#### BSD3
+**Given** durationSeconds = 0
+**When** 建立 BookedSlot
+**Then** throws `BookingError.invalidDuration`
+
+#### BSD4
+**Given** BookedSlot 與 ComputedSlot 對齊或 start 相差 2 秒
+**When** 呼叫 `matches(_:)`
+**Then** 對齊回 true、相差 2 秒回 false
+
+### Usecase — ListOthersBookingsUseCase（3）
+
+> Fakes：`FakeBookingRepository` 加 `fetchOthersBookingsResult` slot。
+
+#### BO1
+**Given** repo.fetchOthersBookings 回 `[]`
+**When** listOthersBookings
+**Then** usecase 回 `[]`
+
+#### BO2
+**Given** repo.fetchOthersBookings 回 2 筆 BookedSlot
+**When** listOthersBookings
+**Then** usecase 透傳、order 不變
+
+#### BO3
+**Given** repo.fetchOthersBookings 拋 `.notMember` 或 `.persistenceFailure`
+**When** listOthersBookings
+**Then** 各自透傳對應 typed error
+
+### Infrastructure 整合測試（4，打 local Supabase）
+
+> setup 內動態 INSERT user B membership（teardown 復原），user C 仍是
+> seed member、不額外動。
+
+#### BINT-V1
+**Given** user C 已 book 一筆未來 slot；user B 是 member
+**When** user B 呼叫 `get_bookings_visible_to_member`
+**Then** 回 1 筆 sanitized row（同 starts_at / ends_at / duration），
+DTO **無** student_id / email / booking_id 欄位
+
+#### BINT-V2
+**Given** user C 已 book 一筆 slot
+**When** user **C 自己**呼叫 `get_bookings_visible_to_member`
+**Then** 回 0 筆（RPC 內 `student_id <> auth.uid()` 已篩）
+
+#### BINT-V3
+**Given** 一位非 member 的 user（teardown 後的 user B）已登入
+**When** 呼叫 `get_bookings_visible_to_member`
+**Then** RPC 回 `NOT_MEMBER` → mapper → `.notMember`
+
+#### BINT-V4
+**Given** user A（owner、非 member）已登入
+**When** 呼叫 `get_bookings_visible_to_member`
+**Then** RPC 回 `NOT_MEMBER` → `.notMember`（owner 應走 owner RPC、
+此 RPC 不為 owner 設計）
+
+### ViewModel — ScheduleCalendarViewModel 增量（4）
+
+> Fakes 多一個 `FakeListOthersBookingsUseCase`。schedule 仍是 Monday
+> rule 09:00–18:00 共 9 個 slot。
+
+#### BCV8
+**Given** non-owner、onAppear、listOthersBookings 回 0 筆
+**When** selectDate(monday)
+**Then** 所有 slot state 仍照 my-bookings 判定（available / mineBooked），
+無 .bookedByOther
+
+#### BCV9
+**Given** non-owner、onAppear、listOthersBookings 回 1 筆對應 09:00 slot、
+myBookings 為空
+**When** selectDate(monday)
+**Then** 09:00 slot 為 `.bookedByOther`、其餘 8 個 `.available`
+
+#### BCV10
+**Given** non-owner、myBookings 與 othersBookings 同時包含 09:00 slot
+（race / 不一致狀態）
+**When** selectDate(monday)
+**Then** 09:00 slot 為 `.mineBooked(bookingID)`（mineBooked 優先；
+退化路徑保留 cancel 入口）
+
+#### BCV11
+**Given** non-owner、bookSlot 對某 slot 成功、othersBookings 不變
+**When** 觀察該 slot state
+**Then** 該 slot 變 `.mineBooked`、bookedByOther 不曾出現該 slot
+
+## Test 數量（Slice 2）
+
+| 層 | 數量 |
+|---|---|
+| Domain (BSD) | 4 |
+| Usecase ListOthers (BO) | 3 |
+| Infrastructure (BINT-V) | 4 |
+| ViewModel (BCV8-11) | 4 |
+| **Slice 2 合計** | **15** |
+
+合計（Slice 1 + 2）：49

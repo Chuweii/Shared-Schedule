@@ -10,6 +10,7 @@ final class ScheduleCalendarViewModel {
     private(set) var selectedDaySlots: [ComputedSlot] = []
     private(set) var myBookings: [Booking] = []
     private(set) var ownerBookings: [OwnerBooking] = []
+    private(set) var othersBookings: [BookedSlot] = []
     private(set) var inlineError: LocalizedStringResource?
 
     private let calendar: Calendar
@@ -18,6 +19,7 @@ final class ScheduleCalendarViewModel {
     private let createBookingUseCase: (any CreateBookingUseCaseProtocol)?
     private let cancelBookingUseCase: (any CancelBookingUseCaseProtocol)?
     private let listAllBookingsForOwnerUseCase: (any ListAllBookingsForOwnerUseCaseProtocol)?
+    private let listOthersBookingsUseCase: (any ListOthersBookingsUseCaseProtocol)?
 
     init(
         schedule: Schedule,
@@ -27,7 +29,8 @@ final class ScheduleCalendarViewModel {
         listMyBookingsUseCase: (any ListMyBookingsUseCaseProtocol)? = nil,
         createBookingUseCase: (any CreateBookingUseCaseProtocol)? = nil,
         cancelBookingUseCase: (any CancelBookingUseCaseProtocol)? = nil,
-        listAllBookingsForOwnerUseCase: (any ListAllBookingsForOwnerUseCaseProtocol)? = nil
+        listAllBookingsForOwnerUseCase: (any ListAllBookingsForOwnerUseCaseProtocol)? = nil,
+        listOthersBookingsUseCase: (any ListOthersBookingsUseCaseProtocol)? = nil
     ) {
         self.schedule = schedule
         self.calendar = calendar
@@ -39,6 +42,7 @@ final class ScheduleCalendarViewModel {
         self.createBookingUseCase = createBookingUseCase
         self.cancelBookingUseCase = cancelBookingUseCase
         self.listAllBookingsForOwnerUseCase = listAllBookingsForOwnerUseCase
+        self.listOthersBookingsUseCase = listOthersBookingsUseCase
     }
 
     var presentedSlotsForSelectedDate: [PresentedSlot] {
@@ -51,7 +55,11 @@ final class ScheduleCalendarViewModel {
                     state = .available
                 }
             } else if let booking = myBookings.first(where: { $0.matches(slot) }) {
+                // mineBooked beats bookedByOther — race / inconsistent
+                // state should preserve the cancel affordance.
                 state = .mineBooked(booking.id)
+            } else if othersBookings.contains(where: { $0.matches(slot) }) {
+                state = .bookedByOther
             } else {
                 state = .available
             }
@@ -86,6 +94,7 @@ final class ScheduleCalendarViewModel {
             await loadOwnerBookings()
         } else {
             await loadMyBookings()
+            await loadOthersBookings()
         }
     }
 
@@ -108,6 +117,18 @@ final class ScheduleCalendarViewModel {
             )
         } catch {
             // Same silent-on-load policy as loadMyBookings.
+        }
+    }
+
+    private func loadOthersBookings() async {
+        guard let listOthersBookingsUseCase else { return }
+        do {
+            othersBookings = try await listOthersBookingsUseCase.listOthersBookings(
+                scheduleID: schedule.id
+            )
+        } catch {
+            // Same silent-on-load policy as loadMyBookings — rows fall
+            // back to .available rather than blocking the slot list.
         }
     }
 

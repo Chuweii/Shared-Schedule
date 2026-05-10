@@ -20,11 +20,14 @@ final class FakeBookingRepository: BookingRepositoryProtocol, @unchecked Sendabl
     var fetchAllError: Error?
     var fetchAllForOwnerError: ListAllBookingsForOwnerError?
     var fetchAllForOwnerResult: [OwnerBooking] = []
+    var fetchOthersBookingsError: ListOthersBookingsError?
+    var fetchOthersBookingsResult: [BookedSlot] = []
 
     private(set) var createCount = 0
     private(set) var cancelCount = 0
     private(set) var fetchAllCount = 0
     private(set) var fetchAllForOwnerCount = 0
+    private(set) var fetchOthersBookingsCount = 0
     private(set) var lastCreateParams: (
         scheduleID: ScheduleID,
         startsAt: Date,
@@ -34,6 +37,7 @@ final class FakeBookingRepository: BookingRepositoryProtocol, @unchecked Sendabl
     private(set) var lastCancelID: BookingID?
     private(set) var lastFetchAllParams: (scheduleID: ScheduleID, studentID: UserID)?
     private(set) var lastFetchAllForOwnerScheduleID: ScheduleID?
+    private(set) var lastFetchOthersBookingsScheduleID: ScheduleID?
 
     init(studentIDForCreate: UserID = UserID("teacher-001")) {
         self.studentIDForCreate = studentIDForCreate
@@ -90,6 +94,15 @@ final class FakeBookingRepository: BookingRepositoryProtocol, @unchecked Sendabl
         lastFetchAllForOwnerScheduleID = scheduleID
         if let fetchAllForOwnerError { throw fetchAllForOwnerError }
         return fetchAllForOwnerResult
+    }
+
+    func fetchOthersBookings(
+        scheduleID: ScheduleID
+    ) async throws(ListOthersBookingsError) -> [BookedSlot] {
+        fetchOthersBookingsCount += 1
+        lastFetchOthersBookingsScheduleID = scheduleID
+        if let fetchOthersBookingsError { throw fetchOthersBookingsError }
+        return fetchOthersBookingsResult
     }
 
     func preload(_ bookings: [Booking]) {

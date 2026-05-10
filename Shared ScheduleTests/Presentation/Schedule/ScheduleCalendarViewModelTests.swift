@@ -358,4 +358,149 @@ struct ScheduleCalendarViewModelTests {
         let presented = vm.presentedSlotsForSelectedDate
         #expect(presented.allSatisfy { $0.state == .available })
     }
+
+    // MARK: - Slice 2 — Cross-student visibility
+
+    /// SUT helper for non-owner tests that exercise `bookedByOther`.
+    /// Wires the four student-side use cases (list-mine / create / cancel
+    /// / list-others) so the VM's resolution priority can be observed.
+    private func makeStudentSUT(
+        schedule: Schedule,
+        myBookings: [Booking] = [],
+        othersBookings: [BookedSlot] = [],
+        othersError: ListOthersBookingsError? = nil
+    ) -> (
+        vm: ScheduleCalendarViewModel,
+        listFake: FakeListMyBookingsUseCase,
+        createFake: FakeCreateBookingUseCase,
+        cancelFake: FakeCancelBookingUseCase,
+        othersFake: FakeListOthersBookingsUseCase
+    ) {
+        let listFake = FakeListMyBookingsUseCase()
+        listFake.resultToReturn = myBookings
+        let createFake = FakeCreateBookingUseCase()
+        let cancelFake = FakeCancelBookingUseCase()
+        let othersFake = FakeListOthersBookingsUseCase()
+        othersFake.resultToReturn = othersBookings
+        othersFake.errorToThrow = othersError
+        let vm = ScheduleCalendarViewModel(
+            schedule: schedule,
+            calendar: Self.utcCalendar,
+            referenceDate: Self.date(year: 2026, month: 4, day: 1),
+            listMyBookingsUseCase: listFake,
+            createBookingUseCase: createFake,
+            cancelBookingUseCase: cancelFake,
+            listOthersBookingsUseCase: othersFake
+        )
+        return (vm, listFake, createFake, cancelFake, othersFake)
+    }
+
+    private static func bookedSlot(at start: Date) throws -> BookedSlot {
+        try BookedSlot(
+            startsAt: start,
+            endsAt: start.addingTimeInterval(3600),
+            durationSeconds: 3600
+        )
+    }
+
+    // MARK: - BCV8
+
+    @Test("BCV8. non-owner、othersBookings 回 0 筆 → 仍照 my-bookings 判定，無 .bookedByOther")
+    func onAppear_studentMode_zeroOthers_noBookedByOther() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let (vm, _, _, _, othersFake) = makeStudentSUT(schedule: schedule)
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        #expect(othersFake.callCount == 1)
+        #expect(vm.othersBookings.isEmpty)
+        let presented = vm.presentedSlotsForSelectedDate
+        #expect(presented.allSatisfy { $0.state == .available })
+    }
+
+    // MARK: - BCV9
+
+    @Test("BCV9. non-owner、othersBookings 回 1 筆 09:00 → 該 slot 變 .bookedByOther、其餘 .available")
+    func onAppear_studentMode_oneOther_slotIsBookedByOther() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let other = try Self.bookedSlot(at: mondayNineAM)
+        let (vm, _, _, _, _) = makeStudentSUT(schedule: schedule, othersBookings: [other])
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        let presented = vm.presentedSlotsForSelectedDate
+        #expect(presented.count == 9)
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .bookedByOther)
+        let others = presented.filter { $0.slot.start != mondayNineAM }
+        #expect(others.allSatisfy { $0.state == .available })
+    }
+
+    // MARK: - BCV10
+
+    @Test("BCV10. non-owner、myBookings 與 othersBookings 同 slot → mineBooked 優先")
+    func onAppear_studentMode_mineAndOtherCollide_mineWins() async throws {
+        // Given: race / inconsistent state — same starts_at appears in both lists
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let myBooking = try Self.booking(at: mondayNineAM, scheduleID: schedule.id)
+        let other = try Self.bookedSlot(at: mondayNineAM)
+        let (vm, _, _, _, _) = makeStudentSUT(
+            schedule: schedule,
+            myBookings: [myBooking],
+            othersBookings: [other]
+        )
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then: mineBooked wins so the cancel affordance survives
+        let presented = vm.presentedSlotsForSelectedDate
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .mineBooked(myBooking.id))
+    }
+
+    // MARK: - BCV11
+
+    @Test("BCV11. non-owner、bookSlot 成功 → 該 slot 變 .mineBooked、不曾顯示為 .bookedByOther")
+    func bookSlot_succeeds_neverShowsAsBookedByOther() async throws {
+        // Given: othersBookings does NOT contain the target slot
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayTenAM = monday.addingTimeInterval(10 * 3600)
+        let resultingBooking = try Self.booking(at: mondayTenAM, scheduleID: schedule.id)
+        let unrelatedOther = try Self.bookedSlot(at: monday.addingTimeInterval(15 * 3600))
+        let (vm, _, createFake, _, _) = makeStudentSUT(
+            schedule: schedule,
+            othersBookings: [unrelatedOther]
+        )
+        createFake.resultToReturn = resultingBooking
+        await vm.onAppear()
+        vm.selectDate(monday)
+        let targetSlot = ComputedSlot(start: mondayTenAM, end: mondayTenAM.addingTimeInterval(3600))
+
+        // When
+        await vm.bookSlot(targetSlot)
+
+        // Then
+        let presented = vm.presentedSlotsForSelectedDate
+        let tenAMRow = try #require(presented.first { $0.slot.start == mondayTenAM })
+        #expect(tenAMRow.state == .mineBooked(resultingBooking.id))
+        // Sanity: the unrelated other booking still surfaces as bookedByOther
+        let threePMRow = try #require(presented.first { $0.slot.start == monday.addingTimeInterval(15 * 3600) })
+        #expect(threePMRow.state == .bookedByOther)
+    }
 }

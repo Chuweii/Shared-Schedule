@@ -915,6 +915,23 @@
         }
       }
     },
+    "已被預約" : {
+      "comment" : "Slice 2 — 'Booked' indicator on a slot taken by another student. Used in DaySlotListView.bookedByOtherRow.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Booked by someone else"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "他の人が予約済み"
+          }
+        }
+      }
+    },
     "已預約" : {
       "localizations" : {
         "en" : {

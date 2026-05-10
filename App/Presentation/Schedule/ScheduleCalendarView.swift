@@ -20,7 +20,8 @@ struct ScheduleCalendarView: View {
             listMyBookingsUseCase: dependencies?.listMyBookingsUseCase,
             createBookingUseCase: dependencies?.createBookingUseCase,
             cancelBookingUseCase: dependencies?.cancelBookingUseCase,
-            listAllBookingsForOwnerUseCase: dependencies?.listAllBookingsForOwnerUseCase
+            listAllBookingsForOwnerUseCase: dependencies?.listAllBookingsForOwnerUseCase,
+            listOthersBookingsUseCase: dependencies?.listOthersBookingsUseCase
         )
     }
 

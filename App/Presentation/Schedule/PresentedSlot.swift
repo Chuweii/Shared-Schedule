@@ -17,4 +17,8 @@ enum SlotPresentationState: Sendable, Equatable {
     /// Owner view: this slot is booked by some student. Email surfaces
     /// in the owner-only owner row UI; not visible to other students.
     case bookedByStudent(email: String)
+    /// Student view (Slice 2): this slot is booked by another student.
+    /// No payload by design — the row renders time-only "已被預約" with
+    /// no booking_id / student_id / email leaking through.
+    case bookedByOther
 }

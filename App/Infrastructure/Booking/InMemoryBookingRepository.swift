@@ -63,4 +63,23 @@ nonisolated final class InMemoryBookingRepository: BookingRepositoryProtocol, @u
             .sorted { $0.startsAt < $1.startsAt }
             .map { OwnerBooking(booking: $0, studentEmail: "preview@example.com") }
     }
+
+    func fetchOthersBookings(
+        scheduleID: ScheduleID
+    ) async throws(ListOthersBookingsError) -> [BookedSlot] {
+        // Preview-only mirror of fetchOthersBookings: return every other
+        // booking on the schedule (excluding the synthetic preview-student)
+        // sanitized to BookedSlot. Previews that exercise cross-student
+        // visibility should wire fake usecases at the ViewModel boundary.
+        store.values
+            .filter { $0.scheduleID == scheduleID && $0.studentID != UserID("preview-student") }
+            .sorted { $0.startsAt < $1.startsAt }
+            .compactMap { booking in
+                try? BookedSlot(
+                    startsAt: booking.startsAt,
+                    endsAt: booking.endsAt,
+                    durationSeconds: booking.durationSeconds
+                )
+            }
+    }
 }

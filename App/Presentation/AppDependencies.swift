@@ -64,6 +64,10 @@ nonisolated struct AppDependencies: Sendable {
         ListAllBookingsForOwnerUseCase(bookingRepository: bookingRepository)
     }
 
+    var listOthersBookingsUseCase: any ListOthersBookingsUseCaseProtocol {
+        ListOthersBookingsUseCase(bookingRepository: bookingRepository)
+    }
+
     static let live = AppDependencies(
         repository: InMemoryScheduleRepository(),
         invitationRepository: InMemoryInvitationRepository(),

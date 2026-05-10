@@ -127,3 +127,82 @@ ScheduleCalendarView（既有 isOwner === true）
   → row 不可點（Button disabled），無 confirmation flow
   → toolbar 仍顯示「邀請學生」按鈕（既有 owner-only）
 ```
+
+---
+
+## Slice 2 — 跨 student 可見性（2026-05-10 加入）
+
+### Why
+
+Slice 1 完成後 member-vs-member 之間互盲：學生 B 看不到學生 C 已佔用
+的 slot，唯一感知途徑是預約後被 RPC 回 `SLOT_TAKEN` 報錯——多餘的
+confirmation alert + 錯誤閃。學生也看不到「忙日 vs 空日」的視覺密
+度，無從預測搶課。
+
+Slice 2 解：calendar slot list 上把「他人已預約」的 row 渲染成灰底、
+disabled、`時段 — 已被預約`。tap 直接無反應、不發 RPC。
+
+### What
+
+#### 新增的概念
+
+- **BookedSlot**（Domain VO）：sanitized 的「已被預約時段」表示，僅含
+  `(startsAt, endsAt, durationSeconds)`，**無 booking_id / student_id /
+  email**——型別系統就擋掉「不小心拿這個 row 去 cancel」或「不小心
+  log/render student email」的 bug。
+- **`SlotPresentationState.bookedByOther`** case：student 視角，無
+  payload。owner 視角仍用既有 `bookedByStudent(email:)`（Slice 1.5）。
+
+#### Student 可以做的事（增量）
+
+- 進 calendar 立即看到他人已預約的 slot 為灰底「已被預約」row、tap
+  完全無反應。
+- 不再走「點下去 → confirmation → SLOT_TAKEN」的失敗路徑。
+
+### Permissions（增量）
+
+| 角色 | 可做（Slice 2 新增） | 不可做 |
+|---|---|---|
+| Member（student） | 透過新 RPC `get_bookings_visible_to_member` 看到同 schedule 上他人預約的時段範圍（time-only）、不含他人身分 | 看到他人 student_id / email / booking_id（RPC return signature 預先限縮三欄） |
+| Schedule owner（teacher） | 不變——仍走 `get_bookings_for_owner` 含 email | RPC `get_bookings_visible_to_member` 對 owner 回 `NOT_MEMBER`、owner 應走 owner path |
+
+### 為什麼 RLS 不直接 OR-add `is_member_of_schedule(...)`
+
+Slice 1 plan 草稿曾提過此方向。Slice 2 plan-mode 複盤後改採 RPC-only：
+
+- OR-add 會讓 `bookings?select=*` 直接回完整 row，PostgREST 不像
+  Postgres view 能 column-level mask。要避免 PII 還得另加 view /
+  function 包裝；那就乾脆只加 RPC、不動 base table RLS。
+- base table RLS 收緊代表將來任何路徑都得明確走 RPC、少一條「不小心
+  打開」的洞。
+- audit story 簡單：要審查「member 還能看到什麼」只看一個 RPC
+  migration 檔案。
+
+### User Flow（Slice 2 增量）
+
+```
+ScheduleCalendarView onAppear（非 owner 分支）
+  → loadMyBookings (既有)
+  → loadOthersBookings ← 新
+    → ListOthersBookingsUseCase.listOthersBookings
+      → SupabaseBookingRepository.fetchOthersBookings
+        → get_bookings_visible_to_member RPC：
+            auth → member → SELECT sanitized rows
+        → 失敗：silent（同 loadMyBookings；不污染 inlineError）
+  → presentedSlotsForSelectedDate 解析優先序：
+    mineBooked > bookedByOther > available
+```
+
+bookedByOther row：無 tap callback、無 button。`onTapAvailable` 只接
+`available` row、`onTapCancel` 只接 `mineBooked` row——bookedByOther
+的 tap 不路由到任何 action。
+
+### Out of Scope（Slice 2 不做、但設計上不堵）
+
+- Teacher 主動取消學生 booking → Phase 4+；純 backend 改 cancel_booking
+  RPC、不影響本 slice
+- Group-class capacity > 1 → 不在 roadmap；新 RPC 回 row-list（非
+  boolean）+ `BookedSlot` 不含 id 都已為此鋪好
+- Real-time 同步（websocket）→ Phase 4+；目前 polling-on-appear
+- 「有多少 slot 可預約」的密度 badge → Phase 4+
+- Reschedule（直接改時間）→ Phase 4+；MVP 用「先取消再預約」
