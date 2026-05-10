@@ -756,5 +756,43 @@ struct SupabaseIntegrationTests {
             )
             return (start, start.addingTimeInterval(TimeInterval(durationSeconds)))
         }
+
+        // MARK: - Owner-side fetch (Slice 1.5)
+
+        @Test("BINT8. Owner (user A) fetches all bookings on own schedule — sees C's booking with email")
+        func ownerFetchAll_returnsBookingsWithStudentEmail() async throws {
+            // Given: user C books a slot
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let created = try await repo.create(
+                scheduleID: Self.scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When: user A asks for all bookings on their schedule
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let result = try await repo.fetchAllForOwner(scheduleID: Self.scheduleID)
+
+            // Then: result includes user C's booking with the seeded email
+            let ownerView = try #require(result.first(where: { $0.booking.id == created.id }))
+            #expect(ownerView.studentEmail == IntegrationTestSupport.userCEmail)
+            #expect(ownerView.booking.scheduleID == Self.scheduleID)
+            #expect(abs(ownerView.booking.startsAt.timeIntervalSince(start)) < 1)
+        }
+
+        @Test("BINT9. Non-owner (user C) calls fetchAllForOwner — throws .notOwner")
+        func nonOwnerFetchAll_throwsNotOwner() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
+            let repo = SupabaseBookingRepository()
+
+            // When / Then
+            await #expect(throws: ListAllBookingsForOwnerError.notOwner) {
+                _ = try await repo.fetchAllForOwner(scheduleID: Self.scheduleID)
+            }
+        }
     }
 }

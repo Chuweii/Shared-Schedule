@@ -290,4 +290,72 @@ struct ScheduleCalendarViewModelTests {
         let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
         #expect(nineAMRow.state == .available)
     }
+
+    // MARK: - Slice 1.5 — Owner view
+
+    private func makeOwnerSUT(
+        schedule: Schedule,
+        ownerListResult: [OwnerBooking] = [],
+        ownerListError: ListAllBookingsForOwnerError? = nil
+    ) -> (
+        vm: ScheduleCalendarViewModel,
+        ownerListFake: FakeListAllBookingsForOwnerUseCase
+    ) {
+        let ownerListFake = FakeListAllBookingsForOwnerUseCase()
+        ownerListFake.resultToReturn = ownerListResult
+        ownerListFake.errorToThrow = ownerListError
+        let vm = ScheduleCalendarViewModel(
+            schedule: schedule,
+            calendar: Self.utcCalendar,
+            referenceDate: Self.date(year: 2026, month: 4, day: 1),
+            isOwner: true,
+            listAllBookingsForOwnerUseCase: ownerListFake
+        )
+        return (vm, ownerListFake)
+    }
+
+    // MARK: - BCV6
+
+    @Test("BCV6. Owner 模式 onAppear 撈到 1 筆 OwnerBooking → 對應 slot 變 .bookedByStudent")
+    func onAppear_ownerMode_oneBooking_slotIsBookedByStudent() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayTenAM = monday.addingTimeInterval(10 * 3600)
+        let booking = try Self.booking(at: mondayTenAM, scheduleID: schedule.id)
+        let ownerView = OwnerBooking(booking: booking, studentEmail: "test-student-c@example.com")
+        let (vm, ownerListFake) = makeOwnerSUT(schedule: schedule, ownerListResult: [ownerView])
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        #expect(ownerListFake.callCount == 1)
+        let presented = vm.presentedSlotsForSelectedDate
+        let tenAMRow = try #require(presented.first { $0.slot.start == mondayTenAM })
+        #expect(tenAMRow.state == .bookedByStudent(email: "test-student-c@example.com"))
+        let others = presented.filter { $0.slot.start != mondayTenAM }
+        #expect(others.allSatisfy { $0.state == .available })
+    }
+
+    // MARK: - BCV7
+
+    @Test("BCV7. Owner 模式 listAllBookingsForOwner throws → 全部 slot 仍 .available（silent fail）")
+    func onAppear_ownerMode_throws_fallsBackToAvailable() async throws {
+        // Given
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let (vm, ownerListFake) = makeOwnerSUT(schedule: schedule, ownerListError: .persistenceFailure)
+
+        // When
+        await vm.onAppear()
+        vm.selectDate(monday)
+
+        // Then
+        #expect(ownerListFake.callCount == 1)
+        #expect(vm.ownerBookings.isEmpty)
+        let presented = vm.presentedSlotsForSelectedDate
+        #expect(presented.allSatisfy { $0.state == .available })
+    }
 }

@@ -10,11 +10,17 @@ struct ScheduleCalendarView: View {
 
     init(schedule: Schedule, dependencies: AppDependencies? = nil) {
         self.dependencies = dependencies
+        let isOwner: Bool = {
+            guard let dependencies else { return false }
+            return schedule.ownerID == dependencies.currentUserProvider.currentUser.id
+        }()
         self.viewModel = ScheduleCalendarViewModel(
             schedule: schedule,
+            isOwner: isOwner,
             listMyBookingsUseCase: dependencies?.listMyBookingsUseCase,
             createBookingUseCase: dependencies?.createBookingUseCase,
-            cancelBookingUseCase: dependencies?.cancelBookingUseCase
+            cancelBookingUseCase: dependencies?.cancelBookingUseCase,
+            listAllBookingsForOwnerUseCase: dependencies?.listAllBookingsForOwnerUseCase
         )
     }
 

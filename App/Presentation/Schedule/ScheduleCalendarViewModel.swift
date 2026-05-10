@@ -9,36 +9,52 @@ final class ScheduleCalendarViewModel {
     private(set) var selectedDate: Date?
     private(set) var selectedDaySlots: [ComputedSlot] = []
     private(set) var myBookings: [Booking] = []
+    private(set) var ownerBookings: [OwnerBooking] = []
     private(set) var inlineError: LocalizedStringResource?
 
     private let calendar: Calendar
+    private let isOwner: Bool
     private let listMyBookingsUseCase: (any ListMyBookingsUseCaseProtocol)?
     private let createBookingUseCase: (any CreateBookingUseCaseProtocol)?
     private let cancelBookingUseCase: (any CancelBookingUseCaseProtocol)?
+    private let listAllBookingsForOwnerUseCase: (any ListAllBookingsForOwnerUseCaseProtocol)?
 
     init(
         schedule: Schedule,
         calendar: Calendar = .current,
         referenceDate: Date = Date(),
+        isOwner: Bool = false,
         listMyBookingsUseCase: (any ListMyBookingsUseCaseProtocol)? = nil,
         createBookingUseCase: (any CreateBookingUseCaseProtocol)? = nil,
-        cancelBookingUseCase: (any CancelBookingUseCaseProtocol)? = nil
+        cancelBookingUseCase: (any CancelBookingUseCaseProtocol)? = nil,
+        listAllBookingsForOwnerUseCase: (any ListAllBookingsForOwnerUseCaseProtocol)? = nil
     ) {
         self.schedule = schedule
         self.calendar = calendar
         self.currentMonth = calendar.date(
             from: calendar.dateComponents([.year, .month], from: referenceDate)
         ) ?? referenceDate
+        self.isOwner = isOwner
         self.listMyBookingsUseCase = listMyBookingsUseCase
         self.createBookingUseCase = createBookingUseCase
         self.cancelBookingUseCase = cancelBookingUseCase
+        self.listAllBookingsForOwnerUseCase = listAllBookingsForOwnerUseCase
     }
 
     var presentedSlotsForSelectedDate: [PresentedSlot] {
         selectedDaySlots.map { slot in
-            let booking = myBookings.first(where: { $0.matches(slot) })
-            let state: SlotPresentationState = booking
-                .map { .mineBooked($0.id) } ?? .available
+            let state: SlotPresentationState
+            if isOwner {
+                if let owned = ownerBookings.first(where: { $0.booking.matches(slot) }) {
+                    state = .bookedByStudent(email: owned.studentEmail)
+                } else {
+                    state = .available
+                }
+            } else if let booking = myBookings.first(where: { $0.matches(slot) }) {
+                state = .mineBooked(booking.id)
+            } else {
+                state = .available
+            }
             return PresentedSlot(
                 id: "\(slot.start.timeIntervalSince1970)",
                 slot: slot,
@@ -49,7 +65,7 @@ final class ScheduleCalendarViewModel {
 
     func onAppear() async {
         updateDays()
-        await loadMyBookings()
+        await loadBookings()
     }
 
     func selectDate(_ date: Date) {
@@ -65,7 +81,15 @@ final class ScheduleCalendarViewModel {
         selectedDaySlots = []
     }
 
-    func loadMyBookings() async {
+    func loadBookings() async {
+        if isOwner {
+            await loadOwnerBookings()
+        } else {
+            await loadMyBookings()
+        }
+    }
+
+    private func loadMyBookings() async {
         guard let listMyBookingsUseCase else { return }
         do {
             myBookings = try await listMyBookingsUseCase.listMyBookings(scheduleID: schedule.id)
@@ -73,6 +97,17 @@ final class ScheduleCalendarViewModel {
             // Calendar still renders without my-bookings overlay; user can
             // re-enter the view to retry. We deliberately don't surface to
             // inlineError here so the slot-list area isn't hijacked on entry.
+        }
+    }
+
+    private func loadOwnerBookings() async {
+        guard let listAllBookingsForOwnerUseCase else { return }
+        do {
+            ownerBookings = try await listAllBookingsForOwnerUseCase.listAllBookingsForOwner(
+                scheduleID: schedule.id
+            )
+        } catch {
+            // Same silent-on-load policy as loadMyBookings.
         }
     }
 

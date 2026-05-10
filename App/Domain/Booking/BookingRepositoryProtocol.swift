@@ -23,4 +23,12 @@ protocol BookingRepositoryProtocol: Sendable {
         scheduleID: ScheduleID,
         studentID: UserID
     ) async throws -> [Booking]
+
+    /// Owner-only: all bookings on the schedule, augmented with the
+    /// student's email. Backed by the `get_bookings_for_owner` RPC,
+    /// which `RAISE EXCEPTION 'NOT_OWNER'` for callers who do not own
+    /// the schedule.
+    func fetchAllForOwner(
+        scheduleID: ScheduleID
+    ) async throws(ListAllBookingsForOwnerError) -> [OwnerBooking]
 }

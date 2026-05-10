@@ -50,4 +50,17 @@ nonisolated final class InMemoryBookingRepository: BookingRepositoryProtocol, @u
             .filter { $0.scheduleID == scheduleID && $0.studentID == studentID }
             .sorted { $0.startsAt < $1.startsAt }
     }
+
+    func fetchAllForOwner(
+        scheduleID: ScheduleID
+    ) async throws(ListAllBookingsForOwnerError) -> [OwnerBooking] {
+        // Preview-only: there's no real auth identity, so we can't tell
+        // who is "owner". Return everything on the schedule as if the
+        // caller were the owner; previews that need permission semantics
+        // should wire fake usecases at the ViewModel boundary.
+        store.values
+            .filter { $0.scheduleID == scheduleID }
+            .sorted { $0.startsAt < $1.startsAt }
+            .map { OwnerBooking(booking: $0, studentEmail: "preview@example.com") }
+    }
 }

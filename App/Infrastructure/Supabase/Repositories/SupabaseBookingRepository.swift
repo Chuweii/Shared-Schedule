@@ -15,6 +15,10 @@ final class SupabaseBookingRepository: BookingRepositoryProtocol, @unchecked Sen
         let targetBookingId: UUID
     }
 
+    private struct GetBookingsForOwnerParams: Encodable, Sendable {
+        let targetScheduleId: UUID
+    }
+
     private func db() async throws -> PostgrestClient {
         let session = try await SupabaseClientProvider.auth.session
         return SupabaseClientProvider.database(accessToken: session.accessToken)
@@ -80,5 +84,25 @@ final class SupabaseBookingRepository: BookingRepositoryProtocol, @unchecked Sen
             .execute()
             .value
         return dtos.compactMap(BookingMapper.toDomain)
+    }
+
+    func fetchAllForOwner(
+        scheduleID: ScheduleID
+    ) async throws(ListAllBookingsForOwnerError) -> [OwnerBooking] {
+        let params = GetBookingsForOwnerParams(targetScheduleId: scheduleID.rawValue)
+
+        let dtos: [OwnerBookingDTO]
+        do {
+            dtos = try await db()
+                .rpc("get_bookings_for_owner", params: params)
+                .execute()
+                .value
+        } catch let pg as PostgrestError {
+            throw BookingMapper.mapOwnerFetchError(pg)
+        } catch {
+            throw .persistenceFailure
+        }
+
+        return dtos.compactMap(BookingMapper.toOwnerBooking)
     }
 }

@@ -42,4 +42,30 @@ enum BookingMapper {
         if message.contains("SLOT_STARTED") { return .slotAlreadyStarted }
         return .persistenceFailure
     }
+
+    static func toOwnerBooking(_ dto: OwnerBookingDTO) -> OwnerBooking? {
+        guard
+            let startsAt = ScheduleMapper.parseTimestamptz(dto.startsAt),
+            let endsAt = ScheduleMapper.parseTimestamptz(dto.endsAt),
+            let createdAt = ScheduleMapper.parseTimestamptz(dto.createdAt)
+        else { return nil }
+
+        guard let booking = try? Booking(
+            id: BookingID(dto.id),
+            scheduleID: ScheduleID(dto.scheduleId),
+            studentID: UserID(dto.studentId.uuidString.lowercased()),
+            startsAt: startsAt,
+            endsAt: endsAt,
+            durationSeconds: dto.durationSeconds,
+            createdAt: createdAt
+        ) else { return nil }
+
+        return OwnerBooking(booking: booking, studentEmail: dto.studentEmail)
+    }
+
+    static func mapOwnerFetchError(_ pg: PostgrestError) -> ListAllBookingsForOwnerError {
+        let message = pg.localizedDescription
+        if message.contains("NOT_OWNER") { return .notOwner }
+        return .persistenceFailure
+    }
 }

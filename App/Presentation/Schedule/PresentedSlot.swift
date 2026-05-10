@@ -12,5 +12,9 @@ struct PresentedSlot: Identifiable, Sendable, Equatable {
 
 enum SlotPresentationState: Sendable, Equatable {
     case available
+    /// Student view: this slot is the current student's own booking.
     case mineBooked(BookingID)
+    /// Owner view: this slot is booked by some student. Email surfaces
+    /// in the owner-only owner row UI; not visible to other students.
+    case bookedByStudent(email: String)
 }
