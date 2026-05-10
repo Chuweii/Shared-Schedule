@@ -6,7 +6,18 @@ private let log = Logger(subsystem: "com.Kyoi.Shared-Schedule", category: "Auth"
 
 struct RootView: View {
     @State private var authState: AuthState = .loading
-    @State private var userProvider = SupabaseAuthCurrentUserProvider()
+    private let userProfileRepository: SupabaseUserProfileRepository
+    private let authSignUpClient: SupabaseAuthSignUpClient
+    @State private var userProvider: SupabaseAuthCurrentUserProvider
+
+    init() {
+        let repo = SupabaseUserProfileRepository()
+        self.userProfileRepository = repo
+        self.authSignUpClient = SupabaseAuthSignUpClient()
+        self._userProvider = State(
+            initialValue: SupabaseAuthCurrentUserProvider(userProfileRepository: repo)
+        )
+    }
 
     var body: some View {
         Group {
@@ -19,12 +30,19 @@ struct RootView: View {
                         repository: SupabaseScheduleRepository(),
                         invitationRepository: SupabaseInvitationRepository(),
                         bookingRepository: SupabaseBookingRepository(),
+                        userProfileRepository: userProfileRepository,
+                        authSignUpClient: authSignUpClient,
                         currentUserProvider: userProvider
                     ),
                     onSignOut: signOut
                 )
             case .unauthenticated:
-                LoginView()
+                LoginView(
+                    completeSignUpUseCase: CompleteSignUpUseCase(
+                        authSignUpClient: authSignUpClient,
+                        userProfileRepository: userProfileRepository
+                    )
+                )
             }
         }
         .task {
@@ -54,7 +72,7 @@ struct RootView: View {
         // Check initial session
         do {
             let session = try await SupabaseClientProvider.auth.session
-            userProvider.update(from: session.user)
+            await userProvider.update(from: session.user)
             authState = .authenticated
         } catch {
             log.info("no active session: \(error.localizedDescription, privacy: .public)")
@@ -66,7 +84,7 @@ struct RootView: View {
             switch event {
             case .signedIn:
                 if let user = session?.user {
-                    userProvider.update(from: user)
+                    await userProvider.update(from: user)
                 }
                 authState = .authenticated
             case .signedOut:

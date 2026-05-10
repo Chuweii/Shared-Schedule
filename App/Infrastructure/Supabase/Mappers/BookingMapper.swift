@@ -60,7 +60,11 @@ enum BookingMapper {
             createdAt: createdAt
         ) else { return nil }
 
-        return OwnerBooking(booking: booking, studentEmail: dto.studentEmail)
+        return OwnerBooking(
+            booking: booking,
+            studentEmail: dto.studentEmail,
+            studentDisplayName: dto.studentDisplayName
+        )
     }
 
     static func mapOwnerFetchError(_ pg: PostgrestError) -> ListAllBookingsForOwnerError {

@@ -93,4 +93,85 @@ struct LoginViewModelTests {
         let json = "{\"code\": \(code)}".data(using: .utf8)!
         return try AuthClient.Configuration.jsonDecoder.decode(AuthError.APIError.self, from: json)
     }
+
+    // MARK: - signUp() — Slice A (LVM1-LVM4)
+
+    @MainActor
+    private func makeSignUpSUT() -> (vm: LoginViewModel, fakeUseCase: FakeCompleteSignUpUseCase) {
+        let fake = FakeCompleteSignUpUseCase()
+        let vm = LoginViewModel(completeSignUpUseCase: fake)
+        return (vm, fake)
+    }
+
+    @MainActor
+    @Test("LVM1. signUp 三欄全有效 + fakeUseCase 設成功 → errorMessage nil、isLoading 結束為 false、useCase called 1 次帶正確 args")
+    func signUp_validInputs_succeedsAndCallsUseCase() async {
+        // Given
+        let (vm, fakeUseCase) = makeSignUpSUT()
+        vm.email = "x@y.com"
+        vm.password = "password123"
+        vm.displayName = "小明"
+
+        // When
+        await vm.signUp()
+
+        // Then
+        #expect(vm.errorMessage == nil)
+        #expect(vm.isLoading == false)
+        #expect(fakeUseCase.callCount == 1)
+        #expect(fakeUseCase.lastEmail == "x@y.com")
+        #expect(fakeUseCase.lastPassword == "password123")
+        #expect(fakeUseCase.lastDisplayName == "小明")
+    }
+
+    @MainActor
+    @Test("LVM2. signUp displayName 留空 → errorMessage 設為 EmptyDisplayName 字串、useCase 未呼叫")
+    func signUp_emptyDisplayName_failsPreflight() async {
+        // Given
+        let (vm, fakeUseCase) = makeSignUpSUT()
+        vm.email = "x@y.com"
+        vm.password = "password123"
+        vm.displayName = ""
+
+        // When
+        await vm.signUp()
+
+        // Then
+        #expect(vm.errorMessage == String(localized: "signUpErrorEmptyDisplayName"))
+        #expect(fakeUseCase.callCount == 0)
+    }
+
+    @MainActor
+    @Test("LVM3. signUp fakeUseCase 拋 .userAlreadyExists → errorMessage 設為 UserExists 字串")
+    func signUp_useCaseUserAlreadyExists_setsErrorMessage() async {
+        // Given
+        let (vm, fakeUseCase) = makeSignUpSUT()
+        fakeUseCase.errorToThrow = .userAlreadyExists
+        vm.email = "x@y.com"
+        vm.password = "password123"
+        vm.displayName = "小明"
+
+        // When
+        await vm.signUp()
+
+        // Then
+        #expect(vm.errorMessage == String(localized: "loginErrorUserExists"))
+    }
+
+    @MainActor
+    @Test("LVM4. signUp fakeUseCase 拋 .partialFailure → errorMessage 設為「請重啟」字串")
+    func signUp_useCasePartialFailure_setsRestartMessage() async {
+        // Given
+        let (vm, fakeUseCase) = makeSignUpSUT()
+        fakeUseCase.errorToThrow = .partialFailure
+        vm.email = "x@y.com"
+        vm.password = "password123"
+        vm.displayName = "小明"
+
+        // When
+        await vm.signUp()
+
+        // Then
+        #expect(vm.errorMessage == String(localized: "signUpErrorPartialFailure"))
+    }
 }

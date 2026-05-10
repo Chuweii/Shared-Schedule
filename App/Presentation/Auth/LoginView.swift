@@ -2,8 +2,14 @@ import SwiftUI
 
 struct LoginView: View {
     @Environment(\.theme) private var theme
-    @State private var viewModel = LoginViewModel()
+    @State private var viewModel: LoginViewModel
     @State private var isSignUpMode = false
+
+    init(completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil) {
+        self._viewModel = State(initialValue: LoginViewModel(
+            completeSignUpUseCase: completeSignUpUseCase
+        ))
+    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -64,6 +70,14 @@ struct LoginView: View {
                 .padding()
                 .background(theme.textFieldBgPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            if isSignUpMode {
+                TextField(String(localized: "signUpDisplayNamePlaceholder"), text: $viewModel.displayName)
+                    .textContentType(.name)
+                    .padding()
+                    .background(theme.textFieldBgPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
         }
     }
 

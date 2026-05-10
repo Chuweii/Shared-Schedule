@@ -5,17 +5,23 @@ import Foundation
 final class LoginViewModel {
     var email = ""
     var password = ""
+    var displayName = ""
     var isLoading = false
     var errorMessage: String?
 
     private let authClient: AuthClient
+    private let completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)?
 
-    init(authClient: AuthClient = SupabaseClientProvider.auth) {
+    init(
+        authClient: AuthClient = SupabaseClientProvider.auth,
+        completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil
+    ) {
         self.authClient = authClient
+        self.completeSignUpUseCase = completeSignUpUseCase
     }
 
     func signIn() async {
-        guard validateInput() else { return }
+        guard validateSignInInput() else { return }
         isLoading = true
         errorMessage = nil
         do {
@@ -27,13 +33,24 @@ final class LoginViewModel {
     }
 
     func signUp() async {
-        guard validateInput() else { return }
+        guard let completeSignUpUseCase else {
+            errorMessage = String(localized: "loginErrorGeneric")
+            return
+        }
+        // Pre-flight on displayName specifically (the other two are
+        // covered by the usecase + signIn path's validateSignInInput
+        // for parity with sign-in error UX).
+        guard validateSignUpInput() else { return }
         isLoading = true
         errorMessage = nil
         do {
-            try await authClient.signUp(email: email, password: password)
+            try await completeSignUpUseCase.completeSignUp(
+                email: email,
+                password: password,
+                displayName: displayName
+            )
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = Self.describeSignUp(error)
         }
         isLoading = false
     }
@@ -55,13 +72,50 @@ final class LoginViewModel {
         return String(localized: "loginErrorGeneric")
     }
 
-    private func validateInput() -> Bool {
+    static func describeSignUp(_ error: CompleteSignUpError) -> String {
+        switch error {
+        case .invalidEmail: return String(localized: "loginErrorEmptyEmail")
+        case .invalidPassword: return String(localized: "loginErrorShortPassword")
+        // Empty case is already caught client-side via validateSignUpInput,
+        // so the server-side .invalidDisplayName is overwhelmingly the
+        // "too long" branch — surface that.
+        case .invalidDisplayName: return String(localized: "signUpErrorDisplayNameTooLong")
+        case .userAlreadyExists: return String(localized: "loginErrorUserExists")
+        case .weakPassword: return String(localized: "loginErrorWeakPassword")
+        case .partialFailure: return String(localized: "signUpErrorPartialFailure")
+        case .network: return String(localized: "loginErrorNetwork")
+        case .generic: return String(localized: "loginErrorGeneric")
+        }
+    }
+
+    private func validateSignInInput() -> Bool {
         if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errorMessage = String(localized: "loginErrorEmptyEmail")
             return false
         }
         if password.count < 6 {
             errorMessage = String(localized: "loginErrorShortPassword")
+            return false
+        }
+        return true
+    }
+
+    private func validateSignUpInput() -> Bool {
+        if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            errorMessage = String(localized: "loginErrorEmptyEmail")
+            return false
+        }
+        if password.count < 6 {
+            errorMessage = String(localized: "loginErrorShortPassword")
+            return false
+        }
+        let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedDisplayName.isEmpty {
+            errorMessage = String(localized: "signUpErrorEmptyDisplayName")
+            return false
+        }
+        if trimmedDisplayName.count > 50 {
+            errorMessage = String(localized: "signUpErrorDisplayNameTooLong")
             return false
         }
         return true

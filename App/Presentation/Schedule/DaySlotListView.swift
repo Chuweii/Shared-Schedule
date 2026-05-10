@@ -54,8 +54,8 @@ struct DaySlotListView: View {
             availableRow(presented.slot)
         case .mineBooked(let bookingID):
             bookedRow(presented.slot, bookingID: bookingID)
-        case .bookedByStudent(let email):
-            bookedByStudentRow(presented.slot, email: email)
+        case .bookedByStudent(let displayName, let email):
+            bookedByStudentRow(presented.slot, displayName: displayName, email: email)
         case .bookedByOther:
             bookedByOtherRow(presented.slot)
         }
@@ -109,11 +109,14 @@ struct DaySlotListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func bookedByStudentRow(_ slot: ComputedSlot, email: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+    private func bookedByStudentRow(_ slot: ComputedSlot, displayName: String?, email: String) -> some View {
+        // Phase 4 Slice A: prefer displayName from user_profiles; fall
+        // back to email when the student has no profile row yet.
+        let label = displayName ?? email
+        return HStack(alignment: .firstTextBaseline) {
             timeRange(slot)
             Spacer()
-            Text(email)
+            Text(label)
                 .font(.caption)
                 .foregroundStyle(theme.textCaption)
                 .lineLimit(1)

@@ -444,41 +444,65 @@ struct SupabaseIntegrationTests {
 
     @Suite(.serialized) struct AuthCurrentUserProvider {
 
-        @Test("Given a real Supabase sign-in, when the provider is updated from the auth user, then currentUser mirrors the auth identity")
-        func realSignInUpdatesProvider_currentUserMatchesAuthUser() async throws {
-            // Given
+        @Test("Given a real sign-in, the provider hydrates displayName from user_profiles (Slice A)")
+        func realSignInUpdatesProvider_displayNameFromProfile() async throws {
+            // Given: user A has a seeded user_profiles row "Test Teacher A"
             let authUser = try await IntegrationTestSupport.signInReturningAuthUser(
                 email: IntegrationTestSupport.userAEmail
             )
 
             // When
-            let provider = SupabaseAuthCurrentUserProvider()
-            provider.update(from: authUser)
+            let provider = SupabaseAuthCurrentUserProvider(
+                userProfileRepository: SupabaseUserProfileRepository()
+            )
+            await provider.update(from: authUser)
 
             // Then
-            #expect(provider.currentUser.id.rawValue == authUser.id.uuidString)
-            #expect(provider.currentUser.displayName == IntegrationTestSupport.userAEmail)
+            #expect(provider.currentUser.id.rawValue == authUser.id.uuidString.lowercased())
+            #expect(provider.currentUser.displayName == "Test Teacher A")
         }
 
-        @Test("Given two consecutive sign-ins (A then B), when the provider is updated from each session, then currentUser reflects the latest identity")
+        @Test("Given consecutive sign-ins (A then B), provider tracks latest displayName from each profile")
         func consecutiveSignIns_currentUserReflectsLatest() async throws {
             // Given: sign in as A
-            let provider = SupabaseAuthCurrentUserProvider()
+            let provider = SupabaseAuthCurrentUserProvider(
+                userProfileRepository: SupabaseUserProfileRepository()
+            )
             let userA = try await IntegrationTestSupport.signInReturningAuthUser(
                 email: IntegrationTestSupport.userAEmail
             )
-            provider.update(from: userA)
-            #expect(provider.currentUser.id.rawValue == userA.id.uuidString)
+            await provider.update(from: userA)
+            #expect(provider.currentUser.displayName == "Test Teacher A")
 
             // When: sign in as B
             let userB = try await IntegrationTestSupport.signInReturningAuthUser(
                 email: IntegrationTestSupport.userBEmail
             )
-            provider.update(from: userB)
+            await provider.update(from: userB)
 
             // Then
-            #expect(provider.currentUser.id.rawValue == userB.id.uuidString)
-            #expect(provider.currentUser.displayName == IntegrationTestSupport.userBEmail)
+            #expect(provider.currentUser.id.rawValue == userB.id.uuidString.lowercased())
+            #expect(provider.currentUser.displayName == "Test Teacher B")
+        }
+
+        @Test("Auth-DN1. Fresh signed-up user without profile — provider falls back to email")
+        func freshSignUpWithoutProfile_fallsBackToEmail() async throws {
+            // Given: brand-new auth user, NO profile row
+            let freshEmail = "auth-dn1-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+            try? await SupabaseClientProvider.auth.signOut()
+            let session = try await SupabaseClientProvider.auth.signUp(
+                email: freshEmail,
+                password: IntegrationTestSupport.testPassword
+            )
+
+            // When
+            let provider = SupabaseAuthCurrentUserProvider(
+                userProfileRepository: SupabaseUserProfileRepository()
+            )
+            await provider.update(from: session.user)
+
+            // Then: fallback path triggers
+            #expect(provider.currentUser.displayName == freshEmail)
         }
     }
 
@@ -759,9 +783,9 @@ struct SupabaseIntegrationTests {
 
         // MARK: - Owner-side fetch (Slice 1.5)
 
-        @Test("BINT8. Owner (user A) fetches all bookings on own schedule — sees C's booking with email")
-        func ownerFetchAll_returnsBookingsWithStudentEmail() async throws {
-            // Given: user C books a slot
+        @Test("BINT8. Owner fetches bookings — sees C's booking with email AND seeded display name (Slice A)")
+        func ownerFetchAll_returnsBookingsWithStudentEmailAndDisplayName() async throws {
+            // Given: user C (whose profile is seeded as "Test Student C") books a slot
             _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userCEmail)
             let repo = SupabaseBookingRepository()
             let (start, end) = Self.freshFutureSlot()
@@ -776,11 +800,73 @@ struct SupabaseIntegrationTests {
             _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
             let result = try await repo.fetchAllForOwner(scheduleID: Self.scheduleID)
 
-            // Then: result includes user C's booking with the seeded email
+            // Then: owner view includes user C's booking with email AND
+            // the displayName joined from user_profiles (Slice A).
             let ownerView = try #require(result.first(where: { $0.booking.id == created.id }))
             #expect(ownerView.studentEmail == IntegrationTestSupport.userCEmail)
+            #expect(ownerView.studentDisplayName == "Test Student C")
             #expect(ownerView.booking.scheduleID == Self.scheduleID)
             #expect(abs(ownerView.booking.startsAt.timeIntervalSince(start)) < 1)
+        }
+
+        @Test("BINT8b. Owner sees a profile-less student's booking — displayName is nil, email surfaces (Slice A fallback)")
+        func ownerFetchAll_profileLessStudent_returnsNilDisplayName() async throws {
+            // Given: A creates a fresh schedule + invitation; a brand-new
+            // user (no profile) signs up, redeems, books a slot. This
+            // simulates the partial-signup state Slice A's UI fallback
+            // is meant to handle.
+            let userAID = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let scheduleRepo = SupabaseScheduleRepository()
+            let invitationRepo = SupabaseInvitationRepository()
+            let scheduleID = ScheduleID()
+            try await scheduleRepo.save(Schedule(
+                id: scheduleID,
+                ownerID: UserID(userAID.uuidString),
+                title: "BINT8b \(UUID().uuidString.prefix(8))"
+            ))
+            let invToken = try Self.bint8bToken()
+            try await invitationRepo.save(try Invitation(
+                scheduleID: scheduleID,
+                token: invToken,
+                expiresAt: Date().addingTimeInterval(60 * 60 * 24)
+            ))
+
+            let freshEmail = "bint8b-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+            try? await SupabaseClientProvider.auth.signOut()
+            _ = try await SupabaseClientProvider.auth.signUp(
+                email: freshEmail,
+                password: IntegrationTestSupport.testPassword
+            )
+            // Intentionally skip create_user_profile — partial signup state.
+
+            _ = try await invitationRepo.redeem(token: invToken)
+            let bookingRepo = SupabaseBookingRepository()
+            let (start, end) = Self.freshFutureSlot()
+            let created = try await bookingRepo.create(
+                scheduleID: scheduleID,
+                startsAt: start,
+                endsAt: end,
+                durationSeconds: Self.durationSeconds
+            )
+
+            // When: A fetches owner view
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let result = try await bookingRepo.fetchAllForOwner(scheduleID: scheduleID)
+
+            // Then: that booking's displayName is nil; email is fresh user's email
+            let ownerView = try #require(result.first(where: { $0.booking.id == created.id }))
+            #expect(ownerView.studentDisplayName == nil)
+            #expect(ownerView.studentEmail == freshEmail)
+        }
+
+        private static func bint8bToken() throws -> InvitationToken {
+            let raw = UUID().uuidString
+                .replacingOccurrences(of: "-", with: "")
+                .uppercased()
+                .filter { InvitationToken.alphabetSet.contains($0) }
+                .prefix(8)
+                .padding(toLength: 8, withPad: "Z", startingAt: 0)
+            return try InvitationToken(raw)
         }
 
         @Test("BINT9. Non-owner (user C) calls fetchAllForOwner — throws .notOwner")
@@ -920,6 +1006,101 @@ struct SupabaseIntegrationTests {
             await #expect(throws: ListOthersBookingsError.notMember) {
                 _ = try await bookingRepo.fetchOthersBookings(scheduleID: Self.scheduleID)
             }
+        }
+    }
+
+    // MARK: - SupabaseUserProfileRepository (Phase 4 Slice A)
+
+    @Suite(.serialized) struct UserProfiles {
+
+        /// Sign up a brand-new user, leaving them signed-in. Used by
+        /// tests that need a profile-less account to exercise the
+        /// fresh-create path or the partial-signup fallback.
+        private static func signUpFreshUser(prefix: String) async throws -> (email: String, userID: UUID) {
+            let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+            try? await SupabaseClientProvider.auth.signOut()
+            let session = try await SupabaseClientProvider.auth.signUp(
+                email: email,
+                password: IntegrationTestSupport.testPassword
+            )
+            return (email, session.user.id)
+        }
+
+        @Test("UINT1. Fresh signed-up user creates own profile — returns UserProfile, DB row exists")
+        func freshUserCreatesOwnProfile_returnsProfile() async throws {
+            // Given: brand-new auth user, no profile yet
+            let (_, userID) = try await Self.signUpFreshUser(prefix: "uint1")
+            let repo = SupabaseUserProfileRepository()
+
+            // When
+            let profile = try await repo.create(displayName: "小明")
+
+            // Then
+            #expect(profile.userID.rawValue == userID.uuidString.lowercased())
+            #expect(profile.displayName == "小明")
+
+            // Confirm it's actually fetchable now (and via the same path
+            // SupabaseAuthCurrentUserProvider will use post-sign-in)
+            let fetched = try await repo.fetch(
+                userID: UserID(userID.uuidString.lowercased())
+            )
+            #expect(fetched?.displayName == "小明")
+        }
+
+        @Test("UINT2. Seed user with backfilled profile calls create — throws .alreadyExists")
+        func seedUserCreateAgain_throwsAlreadyExists() async throws {
+            // Given: seed user A's profile already exists (seed.sql)
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let repo = SupabaseUserProfileRepository()
+
+            // When / Then
+            await #expect(throws: UserProfileError.alreadyExists) {
+                _ = try await repo.create(displayName: "Anything")
+            }
+        }
+
+        @Test("UINT3. Create with 51-char displayName — throws .invalidDisplayName")
+        func createWithTooLongDisplayName_throwsInvalidDisplayName() async throws {
+            // Given: fresh user so we don't bounce off ALREADY_EXISTS first
+            _ = try await Self.signUpFreshUser(prefix: "uint3")
+            let repo = SupabaseUserProfileRepository()
+            let fiftyOne = String(repeating: "a", count: 51)
+
+            // When / Then
+            await #expect(throws: UserProfileError.invalidDisplayName) {
+                _ = try await repo.create(displayName: fiftyOne)
+            }
+        }
+
+        @Test("UINT4. User A fetches user B's profile — RLS hides it (returns nil)")
+        func userAFetchesUserBProfile_rlsReturnsNil() async throws {
+            // Given: A signed in
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let repo = SupabaseUserProfileRepository()
+
+            // When
+            let result = try await repo.fetch(
+                userID: UserID(IntegrationTestSupport.userBID.uuidString.lowercased())
+            )
+
+            // Then
+            #expect(result == nil)
+        }
+
+        @Test("UINT5. User A fetches own profile — returns UserProfile (self_select)")
+        func userAFetchesOwnProfile_returnsProfile() async throws {
+            // Given
+            _ = try await IntegrationTestSupport.signIn(email: IntegrationTestSupport.userAEmail)
+            let repo = SupabaseUserProfileRepository()
+
+            // When
+            let result = try await repo.fetch(
+                userID: UserID(IntegrationTestSupport.userAID.uuidString.lowercased())
+            )
+
+            // Then
+            #expect(result?.displayName == "Test Teacher A")
+            #expect(result?.userID.rawValue == IntegrationTestSupport.userAID.uuidString.lowercased())
         }
     }
 }

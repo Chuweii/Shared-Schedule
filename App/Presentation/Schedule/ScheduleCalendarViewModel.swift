@@ -50,7 +50,10 @@ final class ScheduleCalendarViewModel {
             let state: SlotPresentationState
             if isOwner {
                 if let owned = ownerBookings.first(where: { $0.booking.matches(slot) }) {
-                    state = .bookedByStudent(email: owned.studentEmail)
+                    state = .bookedByStudent(
+                        displayName: owned.studentDisplayName,
+                        email: owned.studentEmail
+                    )
                 } else {
                     state = .available
                 }

@@ -334,7 +334,10 @@ struct ScheduleCalendarViewModelTests {
         #expect(ownerListFake.callCount == 1)
         let presented = vm.presentedSlotsForSelectedDate
         let tenAMRow = try #require(presented.first { $0.slot.start == mondayTenAM })
-        #expect(tenAMRow.state == .bookedByStudent(email: "test-student-c@example.com"))
+        // Slice 1.5 BCV6 was written before Slice A; the OwnerBooking
+        // here was constructed without studentDisplayName so we expect
+        // the nil-displayName branch with the email surfaced.
+        #expect(tenAMRow.state == .bookedByStudent(displayName: nil, email: "test-student-c@example.com"))
         let others = presented.filter { $0.slot.start != mondayTenAM }
         #expect(others.allSatisfy { $0.state == .available })
     }
