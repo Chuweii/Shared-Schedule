@@ -121,15 +121,20 @@ struct ScheduleCalendarView: View {
 
     private var confirmationTitle: LocalizedStringResource {
         if let pendingSlot {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            formatter.dateStyle = .none
-            let startStr = formatter.string(from: pendingSlot.start)
-            let endStr = formatter.string(from: pendingSlot.end)
+            let startStr = Self.timeFormatter.string(from: pendingSlot.start)
+            let endStr = Self.timeFormatter.string(from: pendingSlot.end)
             return "確定預約 \(startStr)–\(endStr)？"
         }
         return "確定預約？"
     }
+
+    /// 24-hour HH:mm — matches DaySlotListView so confirmation title
+    /// reads identically to the row that triggered it.
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 
     private var bookingConfirmationBinding: Binding<Bool> {
         Binding(

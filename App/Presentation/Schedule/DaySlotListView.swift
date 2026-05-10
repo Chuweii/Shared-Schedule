@@ -11,6 +11,14 @@ struct DaySlotListView: View {
     let onTapAvailable: (ComputedSlot) -> Void
     let onTapCancel: (BookingID) -> Void
 
+    /// 24-hour HH:mm — locale-independent so zh-Hant doesn't fall back
+    /// to 上午 / 下午 prefixes that wrap awkwardly inside the row.
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     var body: some View {
         if presentedSlots.isEmpty {
             emptyState
@@ -117,9 +125,9 @@ struct DaySlotListView: View {
 
     private func timeRange(_ slot: ComputedSlot) -> some View {
         HStack(spacing: 4) {
-            Text(slot.start, style: .time)
+            Text(Self.timeFormatter.string(from: slot.start))
             Text("—")
-            Text(slot.end, style: .time)
+            Text(Self.timeFormatter.string(from: slot.end))
         }
         .font(.body.weight(.medium))
         .foregroundStyle(theme.textPrimary)
