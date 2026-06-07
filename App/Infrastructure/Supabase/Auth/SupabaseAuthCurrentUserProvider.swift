@@ -24,8 +24,15 @@ final class SupabaseAuthCurrentUserProvider: CurrentUserProviderProtocol, @unche
     /// (legacy users, or freshly signed-up users whose
     /// `create_user_profile` RPC hasn't landed yet) falls back to email
     /// so the UI never blocks on a profile-creation race.
+    ///
+    /// `UserID` keeps Foundation's default UPPERCASE form so that
+    /// equality comparisons against `Schedule.ownerID` (which goes
+    /// through ScheduleMapper using the same uppercase form) work for
+    /// the `isOwner` branch in calendar / toolbar code. PostgREST UUID
+    /// equality is case-insensitive, so the lowercase profile rows in
+    /// Postgres are still findable via this uppercase UserID.
     func update(from authUser: Auth.User) async {
-        let userID = UserID(authUser.id.uuidString.lowercased())
+        let userID = UserID(authUser.id.uuidString)
         let displayName: String
         do {
             if let profile = try await userProfileRepository.fetch(userID: userID) {

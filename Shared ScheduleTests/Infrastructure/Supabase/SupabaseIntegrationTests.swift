@@ -458,7 +458,7 @@ struct SupabaseIntegrationTests {
             await provider.update(from: authUser)
 
             // Then
-            #expect(provider.currentUser.id.rawValue == authUser.id.uuidString.lowercased())
+            #expect(provider.currentUser.id.rawValue == authUser.id.uuidString)
             #expect(provider.currentUser.displayName == "Test Teacher A")
         }
 
@@ -481,7 +481,7 @@ struct SupabaseIntegrationTests {
             await provider.update(from: userB)
 
             // Then
-            #expect(provider.currentUser.id.rawValue == userB.id.uuidString.lowercased())
+            #expect(provider.currentUser.id.rawValue == userB.id.uuidString)
             #expect(provider.currentUser.displayName == "Test Teacher B")
         }
 
