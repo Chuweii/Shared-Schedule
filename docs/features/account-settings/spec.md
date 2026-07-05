@@ -48,9 +48,8 @@ Slice B **不含**以下項目：
 
 - **Email verification on production / Password reset** → 獨立 Slice
 - **Privacy manifest**（`PrivacyInfo.xcprivacy`） → 獨立 Slice
-- **編輯 displayName 後即時刷新 `currentUserProvider.cachedUser`**：自己的
-  displayName 目前不在其他畫面 surface，下次 sign-in 自然 hydrate；列為
-  未來可加 `provider.refresh()`
+- **跨裝置 / 即時同步他人看到的 displayName**：owner row 顯示的是「別人的」
+  displayName、由該人自己編輯後落庫；不做 realtime 推播
 - **刪除帳號前的「你仍有學生預約」攔阻**：刪帳號即全 CASCADE 清除
 - **打字確認 / 重新登入 re-authenticate**：MVP 純 confirmation dialog
 - **Avatar / 頭像、email 變更、displayName 改名歷史 / audit** → Phase 4+
@@ -83,6 +82,9 @@ SettingsViewModel.saveDisplayName()
       → update_user_profile RPC：auth → length → upsert
       → 回更新後 UserProfile
   ↓ 成功
+  → currentUserProvider.updateCachedDisplayName(newName)
+    （更新 app 全域的 currentUser 快取，讓重開 Settings 立即顯示新名，
+     不必等下次 sign-in）
 顯示「已更新」輕量回饋；失敗顯示 inline error
 ```
 

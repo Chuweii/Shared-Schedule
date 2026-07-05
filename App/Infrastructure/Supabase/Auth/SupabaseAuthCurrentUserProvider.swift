@@ -48,6 +48,11 @@ final class SupabaseAuthCurrentUserProvider: CurrentUserProviderProtocol, @unche
         cachedUser = User(id: userID, displayName: displayName)
     }
 
+    func updateCachedDisplayName(_ displayName: String) {
+        guard let user = cachedUser else { return }
+        cachedUser = User(id: user.id, displayName: displayName)
+    }
+
     func clear() {
         cachedUser = nil
     }

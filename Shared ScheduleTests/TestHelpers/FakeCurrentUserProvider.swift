@@ -9,4 +9,8 @@ final class FakeCurrentUserProvider: CurrentUserProviderProtocol, @unchecked Sen
     }
 
     var currentUser: User { user }
+
+    func updateCachedDisplayName(_ displayName: String) {
+        user = User(id: user.id, displayName: displayName)
+    }
 }
