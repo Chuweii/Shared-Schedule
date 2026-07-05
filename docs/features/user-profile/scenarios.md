@@ -126,30 +126,37 @@ user 加入某 schedule 後 book 一筆 slot
 > Fakes：`FakeCompleteSignUpUseCase`（settable resultToReturn /
 > errorToThrow）。LoginViewModel init 多一個 useCase 參數（optional
 > default = real wired-up）。
+>
+> **2026-07 語言設定功能修訂**（見 `docs/features/language-settings/`）：
+> ViewModel 不再自行解析 localized 字串（`String(localized:)` 不跟隨
+> App 內語言切換），改為暴露 `error: LoginError?` enum；由 View 對應
+> `LocalizedStringKey` 顯示。以下 Then 的「顯示 localized『…』」皆指
+> View 層對應後的使用者可見結果。
 
 ### LVM1
 **Given** email / password / displayName 三欄全有效；fakeUseCase 設 success
 **When** viewModel.signUp()
-**Then** errorMessage == nil；isLoading 結束時為 false；useCase.callCount == 1
+**Then** error == nil；isLoading 結束時為 false；useCase.callCount == 1
 
 ### LVM2
 **Given** displayName 留空
 **When** viewModel.signUp()
-**Then** errorMessage 設為 localized「請輸入顯示名稱」；useCase **未被呼叫**
+**Then** error == `.emptyDisplayName`（View 顯示 localized「請輸入顯示
+名稱」）；useCase **未被呼叫**
 
 ### LVM3
 **Given** fakeUseCase 拋 `.userAlreadyExists`
 **When** viewModel.signUp()
-**Then** errorMessage 設為 localized「此 email 已被註冊」（既有
-loginErrorUserExists key）
+**Then** error == `.userExists`（View 顯示 localized「此 email 已被註冊」，
+既有 loginErrorUserExists key）
 
 ### LVM4
 **Given** fakeUseCase 拋 `.partialFailure`
 **When** viewModel.signUp()
-**Then** errorMessage 設為 localized「註冊失敗，請重啟 app 再試」
-（`signUpErrorPartialFailure`）
+**Then** error == `.partialFailure`（View 顯示 localized「註冊失敗，請
+重啟 app 再試」，`signUpErrorPartialFailure`）
 
-> 既有 `describe()` static tests 不動。
+> 既有 `describe()` static tests 同步改為斷言 enum case。
 
 ## SupabaseAuthCurrentUserProvider 整合測試更新（2 改 + 1 加）
 

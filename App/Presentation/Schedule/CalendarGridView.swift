@@ -2,12 +2,20 @@ import SwiftUI
 
 struct CalendarGridView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     let days: [CalendarDay]
     let selectedDate: Date?
     let onSelectDate: (Date) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
-    private var weekdayHeaders: [String] { Calendar.current.veryShortWeekdaySymbols }
+
+    /// Weekday headers follow the in-app language override, not the
+    /// system locale.
+    private var weekdayHeaders: [String] {
+        var calendar = Calendar.current
+        calendar.locale = locale
+        return calendar.veryShortWeekdaySymbols
+    }
 
     var body: some View {
         VStack(spacing: 8) {

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Settings container shown from the schedule list. Stacks the account
 /// section (display-name edit, sign out, delete account) above the
-/// appearance section (theme picker + preview).
+/// appearance section (theme picker + preview) and the language section.
 struct SettingsView: View {
     @Environment(\.theme) private var theme
     @State private var viewModel: SettingsViewModel
@@ -40,6 +40,15 @@ struct SettingsView: View {
                         .foregroundStyle(theme.textPrimary)
                     ThemeSettingsView()
                 }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("settingsLanguageSection")
+                        .font(.headline)
+                        .foregroundStyle(theme.textPrimary)
+                    LanguageSettingsView()
+                }
             }
             .padding()
         }
@@ -55,4 +64,5 @@ struct SettingsView: View {
     }
     .environment(\.theme, ClassicTheme())
     .environment(ThemeManager())
+    .environment(LanguageManager())
 }

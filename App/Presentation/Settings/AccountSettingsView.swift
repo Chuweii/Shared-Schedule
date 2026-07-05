@@ -57,7 +57,7 @@ struct AccountSettingsView: View {
             }
 
             if let error = viewModel.displayNameError {
-                Text(error)
+                Text(errorMessage(for: error))
                     .font(.caption)
                     .foregroundStyle(theme.error)
             } else if viewModel.didSaveDisplayName {
@@ -121,11 +121,19 @@ struct AccountSettingsView: View {
                 Text("settingsDeleteAccountConfirmMessage")
             }
 
-            if let error = viewModel.deleteError {
-                Text(error)
+            if viewModel.deleteFailed {
+                Text("settingsErrorDeleteFailed")
                     .font(.caption)
                     .foregroundStyle(theme.error)
             }
+        }
+    }
+
+    private func errorMessage(for error: SettingsViewModel.DisplayNameError) -> LocalizedStringKey {
+        switch error {
+        case .empty: "settingsErrorEmptyDisplayName"
+        case .tooLong: "settingsErrorDisplayNameTooLong"
+        case .saveFailed: "settingsErrorSaveFailed"
         }
     }
 }

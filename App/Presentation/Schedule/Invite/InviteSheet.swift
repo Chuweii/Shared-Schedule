@@ -91,7 +91,9 @@ struct InviteSheet: View {
 
     private func errorState(_ message: LocalizedStringResource) -> some View {
         ContentUnavailableView {
-            Label(String(localized: message), systemImage: "exclamationmark.triangle")
+            // Text (not String(localized:)) defers resolution to render
+            // time so the message can follow the in-app language.
+            Label { Text(message) } icon: { Image(systemName: "exclamationmark.triangle") }
         } actions: {
             Button {
                 Task { await viewModel.onAppear() }

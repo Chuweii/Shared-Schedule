@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ScheduleListView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LanguageManager.self) private var languageManager
     @State private var viewModel: ScheduleListViewModel
     @State private var showSettings = false
     @State private var showRedeemSheet = false
@@ -37,7 +39,11 @@ struct ScheduleListView: View {
                 listView
             }
         }
-        .navigationTitle("課表")
+        // Resolved as String (not LocalizedStringKey) so the bar title
+        // re-pushes when the in-app language changes — the bar only
+        // refreshes on value change, and a key compares equal across
+        // locale switches.
+        .navigationTitle(String(localized: "課表", bundle: .forLocale(locale)))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showSettings = true } label: {
@@ -84,7 +90,7 @@ struct ScheduleListView: View {
                         pendingAccountDeleted = true
                     }
                 )
-                .navigationTitle("設定")
+                .navigationTitle(String(localized: "設定", bundle: .forLocale(locale)))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
@@ -93,6 +99,7 @@ struct ScheduleListView: View {
                 }
             }
             .environment(themeManager)
+            .environment(languageManager)
         }
         .task { await viewModel.onAppear() }
         .onChange(of: pendingSignOut) {
@@ -142,7 +149,7 @@ struct ScheduleListView: View {
 
     private var fullScreenErrorView: some View {
         ContentUnavailableView {
-            Label(String(localized: "scheduleListLoadError"), systemImage: "exclamationmark.triangle")
+            Label("scheduleListLoadError", systemImage: "exclamationmark.triangle")
         } actions: {
             Button {
                 Task { await viewModel.onAppear() }
@@ -236,7 +243,11 @@ struct ScheduleListView: View {
     }
 
     private func ruleSummary(_ schedule: Schedule) -> String {
-        let symbols = Calendar.current.shortWeekdaySymbols
+        // Weekday names follow the in-app language override, not the
+        // system locale.
+        var calendar = Calendar.current
+        calendar.locale = locale
+        let symbols = calendar.shortWeekdaySymbols
         let weekdayNames = schedule.rules
             .sorted { $0.weekday.rawValue < $1.weekday.rawValue }
             .map { symbols[$0.weekday.rawValue - 1] }
@@ -257,4 +268,5 @@ struct ScheduleListView: View {
     }
     .environment(\.theme, ClassicTheme())
     .environment(ThemeManager())
+    .environment(LanguageManager())
 }

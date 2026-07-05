@@ -3,11 +3,27 @@ import Foundation
 
 @Observable
 final class LoginViewModel {
+    /// Presentation-level error cases. The View maps each case to a
+    /// `LocalizedStringKey` so messages follow the in-app language
+    /// override (`String(localized:)` resolved here would not).
+    enum LoginError: Equatable {
+        case emptyEmail
+        case shortPassword
+        case emptyDisplayName
+        case displayNameTooLong
+        case invalidCredentials
+        case userExists
+        case weakPassword
+        case partialFailure
+        case network
+        case generic
+    }
+
     var email = ""
     var password = ""
     var displayName = ""
     var isLoading = false
-    var errorMessage: String?
+    var error: LoginError?
 
     private let authClient: AuthClient
     private let completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)?
@@ -23,18 +39,18 @@ final class LoginViewModel {
     func signIn() async {
         guard validateSignInInput() else { return }
         isLoading = true
-        errorMessage = nil
+        error = nil
         do {
             try await authClient.signIn(email: email, password: password)
         } catch {
-            errorMessage = Self.describe(error)
+            self.error = Self.describe(error)
         }
         isLoading = false
     }
 
     func signUp() async {
         guard let completeSignUpUseCase else {
-            errorMessage = String(localized: "loginErrorGeneric")
+            error = .generic
             return
         }
         // Pre-flight on displayName specifically (the other two are
@@ -42,7 +58,7 @@ final class LoginViewModel {
         // for parity with sign-in error UX).
         guard validateSignUpInput() else { return }
         isLoading = true
-        errorMessage = nil
+        error = nil
         do {
             try await completeSignUpUseCase.completeSignUp(
                 email: email,
@@ -50,51 +66,51 @@ final class LoginViewModel {
                 displayName: displayName
             )
         } catch {
-            errorMessage = Self.describeSignUp(error)
+            self.error = Self.describeSignUp(error)
         }
         isLoading = false
     }
 
-    static func describe(_ error: Error) -> String {
+    static func describe(_ error: Error) -> LoginError {
         if error is URLError {
-            return String(localized: "loginErrorNetwork")
+            return .network
         }
         if case let AuthError.api(apiError) = error {
             if apiError.weakPassword != nil {
-                return String(localized: "loginErrorWeakPassword")
+                return .weakPassword
             }
             switch apiError.code {
-            case 400: return String(localized: "loginErrorInvalidCredentials")
-            case 422: return String(localized: "loginErrorUserExists")
+            case 400: return .invalidCredentials
+            case 422: return .userExists
             default: break
             }
         }
-        return String(localized: "loginErrorGeneric")
+        return .generic
     }
 
-    static func describeSignUp(_ error: CompleteSignUpError) -> String {
+    static func describeSignUp(_ error: CompleteSignUpError) -> LoginError {
         switch error {
-        case .invalidEmail: return String(localized: "loginErrorEmptyEmail")
-        case .invalidPassword: return String(localized: "loginErrorShortPassword")
+        case .invalidEmail: return .emptyEmail
+        case .invalidPassword: return .shortPassword
         // Empty case is already caught client-side via validateSignUpInput,
         // so the server-side .invalidDisplayName is overwhelmingly the
         // "too long" branch — surface that.
-        case .invalidDisplayName: return String(localized: "signUpErrorDisplayNameTooLong")
-        case .userAlreadyExists: return String(localized: "loginErrorUserExists")
-        case .weakPassword: return String(localized: "loginErrorWeakPassword")
-        case .partialFailure: return String(localized: "signUpErrorPartialFailure")
-        case .network: return String(localized: "loginErrorNetwork")
-        case .generic: return String(localized: "loginErrorGeneric")
+        case .invalidDisplayName: return .displayNameTooLong
+        case .userAlreadyExists: return .userExists
+        case .weakPassword: return .weakPassword
+        case .partialFailure: return .partialFailure
+        case .network: return .network
+        case .generic: return .generic
         }
     }
 
     private func validateSignInInput() -> Bool {
         if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errorMessage = String(localized: "loginErrorEmptyEmail")
+            error = .emptyEmail
             return false
         }
         if password.count < 6 {
-            errorMessage = String(localized: "loginErrorShortPassword")
+            error = .shortPassword
             return false
         }
         return true
@@ -102,20 +118,20 @@ final class LoginViewModel {
 
     private func validateSignUpInput() -> Bool {
         if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errorMessage = String(localized: "loginErrorEmptyEmail")
+            error = .emptyEmail
             return false
         }
         if password.count < 6 {
-            errorMessage = String(localized: "loginErrorShortPassword")
+            error = .shortPassword
             return false
         }
         let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedDisplayName.isEmpty {
-            errorMessage = String(localized: "signUpErrorEmptyDisplayName")
+            error = .emptyDisplayName
             return false
         }
         if trimmedDisplayName.count > 50 {
-            errorMessage = String(localized: "signUpErrorDisplayNameTooLong")
+            error = .displayNameTooLong
             return false
         }
         return true

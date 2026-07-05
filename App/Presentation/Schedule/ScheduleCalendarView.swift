@@ -120,13 +120,16 @@ struct ScheduleCalendarView: View {
         .task { await viewModel.onAppear() }
     }
 
-    private var confirmationTitle: LocalizedStringResource {
+    /// `Text` (LocalizedStringKey interpolation) so the title follows
+    /// the in-app language override — `LocalizedStringResource` would
+    /// resolve against the system language.
+    private var confirmationTitle: Text {
         if let pendingSlot {
             let startStr = Self.timeFormatter.string(from: pendingSlot.start)
             let endStr = Self.timeFormatter.string(from: pendingSlot.end)
-            return "確定預約 \(startStr)–\(endStr)？"
+            return Text("確定預約 \(startStr)–\(endStr)？")
         }
-        return "確定預約？"
+        return Text("確定預約？")
     }
 
     /// 24-hour HH:mm — matches DaySlotListView so confirmation title
@@ -160,7 +163,7 @@ struct ScheduleCalendarView: View {
 
             Spacer()
 
-            Text(monthYearString)
+            Text(viewModel.currentMonth, format: .dateTime.year().month(.wide))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(theme.textPrimary)
 
@@ -183,9 +186,4 @@ struct ScheduleCalendarView: View {
             .padding(.horizontal)
     }
 
-    private var monthYearString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy 年 M 月"
-        return formatter.string(from: viewModel.currentMonth)
-    }
 }

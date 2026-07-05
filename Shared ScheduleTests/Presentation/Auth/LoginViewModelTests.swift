@@ -7,7 +7,7 @@ struct LoginViewModelTests {
 
     // MARK: - describe
 
-    @Test("URLError → 網路錯誤訊息")
+    @Test("URLError → .network")
     func describe_URLError_returnsNetworkMessage() {
         // Given
         let error = URLError(.notConnectedToInternet)
@@ -16,10 +16,10 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorNetwork"))
+        #expect(message == .network)
     }
 
-    @Test("AuthError 含 weakPassword — 密碼強度錯誤訊息")
+    @Test("AuthError 含 weakPassword → .weakPassword")
     func describe_authErrorWithWeakPassword_returnsWeakPasswordMessage() throws {
         // Given — 422 + weak_password JSON
         let json = #"""
@@ -32,10 +32,10 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorWeakPassword"))
+        #expect(message == .weakPassword)
     }
 
-    @Test("AuthError 400 — 帳密錯誤訊息")
+    @Test("AuthError 400 → .invalidCredentials")
     func describe_authError400_returnsInvalidCredentialsMessage() throws {
         // Given
         let apiError = try decodeAPIError(code: 400)
@@ -45,10 +45,10 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorInvalidCredentials"))
+        #expect(message == .invalidCredentials)
     }
 
-    @Test("AuthError 422 不含 weakPassword — 帳號已存在訊息")
+    @Test("AuthError 422 不含 weakPassword → .userExists")
     func describe_authError422WithoutWeakPassword_returnsUserExistsMessage() throws {
         // Given
         let apiError = try decodeAPIError(code: 422)
@@ -58,10 +58,10 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorUserExists"))
+        #expect(message == .userExists)
     }
 
-    @Test("AuthError 其他 status — 通用錯誤訊息")
+    @Test("AuthError 其他 status → .generic")
     func describe_authErrorOtherCode_returnsGenericMessage() throws {
         // Given
         let apiError = try decodeAPIError(code: 500)
@@ -71,10 +71,10 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorGeneric"))
+        #expect(message == .generic)
     }
 
-    @Test("非 AuthError、非 URLError — 通用錯誤訊息")
+    @Test("非 AuthError、非 URLError → .generic")
     func describe_unknownError_returnsGenericMessage() {
         // Given
         struct OtherError: Error {}
@@ -84,7 +84,7 @@ struct LoginViewModelTests {
         let message = LoginViewModel.describe(error)
 
         // Then
-        #expect(message == String(localized: "loginErrorGeneric"))
+        #expect(message == .generic)
     }
 
     // MARK: - Helpers
@@ -104,7 +104,7 @@ struct LoginViewModelTests {
     }
 
     @MainActor
-    @Test("LVM1. signUp 三欄全有效 + fakeUseCase 設成功 → errorMessage nil、isLoading 結束為 false、useCase called 1 次帶正確 args")
+    @Test("LVM1. signUp 三欄全有效 + fakeUseCase 設成功 → error nil、isLoading 結束為 false、useCase called 1 次帶正確 args")
     func signUp_validInputs_succeedsAndCallsUseCase() async {
         // Given
         let (vm, fakeUseCase) = makeSignUpSUT()
@@ -116,7 +116,7 @@ struct LoginViewModelTests {
         await vm.signUp()
 
         // Then
-        #expect(vm.errorMessage == nil)
+        #expect(vm.error == nil)
         #expect(vm.isLoading == false)
         #expect(fakeUseCase.callCount == 1)
         #expect(fakeUseCase.lastEmail == "x@y.com")
@@ -125,7 +125,7 @@ struct LoginViewModelTests {
     }
 
     @MainActor
-    @Test("LVM2. signUp displayName 留空 → errorMessage 設為 EmptyDisplayName 字串、useCase 未呼叫")
+    @Test("LVM2. signUp displayName 留空 → error == .emptyDisplayName、useCase 未呼叫")
     func signUp_emptyDisplayName_failsPreflight() async {
         // Given
         let (vm, fakeUseCase) = makeSignUpSUT()
@@ -137,12 +137,12 @@ struct LoginViewModelTests {
         await vm.signUp()
 
         // Then
-        #expect(vm.errorMessage == String(localized: "signUpErrorEmptyDisplayName"))
+        #expect(vm.error == .emptyDisplayName)
         #expect(fakeUseCase.callCount == 0)
     }
 
     @MainActor
-    @Test("LVM3. signUp fakeUseCase 拋 .userAlreadyExists → errorMessage 設為 UserExists 字串")
+    @Test("LVM3. signUp fakeUseCase 拋 .userAlreadyExists → error == .userExists")
     func signUp_useCaseUserAlreadyExists_setsErrorMessage() async {
         // Given
         let (vm, fakeUseCase) = makeSignUpSUT()
@@ -155,11 +155,11 @@ struct LoginViewModelTests {
         await vm.signUp()
 
         // Then
-        #expect(vm.errorMessage == String(localized: "loginErrorUserExists"))
+        #expect(vm.error == .userExists)
     }
 
     @MainActor
-    @Test("LVM4. signUp fakeUseCase 拋 .partialFailure → errorMessage 設為「請重啟」字串")
+    @Test("LVM4. signUp fakeUseCase 拋 .partialFailure → error == .partialFailure")
     func signUp_useCasePartialFailure_setsRestartMessage() async {
         // Given
         let (vm, fakeUseCase) = makeSignUpSUT()
@@ -172,6 +172,6 @@ struct LoginViewModelTests {
         await vm.signUp()
 
         // Then
-        #expect(vm.errorMessage == String(localized: "signUpErrorPartialFailure"))
+        #expect(vm.error == .partialFailure)
     }
 }

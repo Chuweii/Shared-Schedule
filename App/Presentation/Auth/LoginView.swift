@@ -19,8 +19,8 @@ struct LoginView: View {
 
             inputFields
 
-            if let error = viewModel.errorMessage {
-                Text(error)
+            if let error = viewModel.error {
+                Text(errorMessage(for: error))
                     .font(.caption)
                     .foregroundStyle(theme.error)
                     .multilineTextAlignment(.center)
@@ -46,9 +46,7 @@ struct LoginView: View {
             Text("Shared Schedule")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
-            Text(isSignUpMode
-                 ? String(localized: "loginSubtitleSignUp")
-                 : String(localized: "loginSubtitleSignIn"))
+            Text(subtitleKey)
                 .font(.subheadline)
                 .foregroundStyle(theme.textSecondary)
         }
@@ -56,7 +54,7 @@ struct LoginView: View {
 
     private var inputFields: some View {
         VStack(spacing: 12) {
-            TextField(String(localized: "loginEmailPlaceholder"), text: $viewModel.email)
+            TextField("loginEmailPlaceholder", text: $viewModel.email)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .autocorrectionDisabled()
@@ -65,14 +63,14 @@ struct LoginView: View {
                 .background(theme.textFieldBgPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            SecureField(String(localized: "loginPasswordPlaceholder"), text: $viewModel.password)
+            SecureField("loginPasswordPlaceholder", text: $viewModel.password)
                 .textContentType(isSignUpMode ? .newPassword : .password)
                 .padding()
                 .background(theme.textFieldBgPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
             if isSignUpMode {
-                TextField(String(localized: "signUpDisplayNamePlaceholder"), text: $viewModel.displayName)
+                TextField("signUpDisplayNamePlaceholder", text: $viewModel.displayName)
                     .textContentType(.name)
                     .padding()
                     .background(theme.textFieldBgPrimary)
@@ -96,9 +94,7 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
             } else {
-                Text(isSignUpMode
-                     ? String(localized: "loginButtonSignUp")
-                     : String(localized: "loginButtonSignIn"))
+                Text(actionButtonKey)
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -113,13 +109,42 @@ struct LoginView: View {
     private var toggleModeButton: some View {
         Button {
             isSignUpMode.toggle()
-            viewModel.errorMessage = nil
+            viewModel.error = nil
         } label: {
-            Text(isSignUpMode
-                 ? String(localized: "loginSwitchToSignIn")
-                 : String(localized: "loginSwitchToSignUp"))
+            Text(toggleModeKey)
                 .font(.subheadline)
                 .foregroundStyle(theme.system)
+        }
+    }
+
+    // MARK: - Localization keys
+    // Ternaries stay typed as LocalizedStringKey (a bare literal ternary
+    // would infer String and render verbatim, bypassing the catalog).
+
+    private var subtitleKey: LocalizedStringKey {
+        isSignUpMode ? "loginSubtitleSignUp" : "loginSubtitleSignIn"
+    }
+
+    private var actionButtonKey: LocalizedStringKey {
+        isSignUpMode ? "loginButtonSignUp" : "loginButtonSignIn"
+    }
+
+    private var toggleModeKey: LocalizedStringKey {
+        isSignUpMode ? "loginSwitchToSignIn" : "loginSwitchToSignUp"
+    }
+
+    private func errorMessage(for error: LoginViewModel.LoginError) -> LocalizedStringKey {
+        switch error {
+        case .emptyEmail: "loginErrorEmptyEmail"
+        case .shortPassword: "loginErrorShortPassword"
+        case .emptyDisplayName: "signUpErrorEmptyDisplayName"
+        case .displayNameTooLong: "signUpErrorDisplayNameTooLong"
+        case .invalidCredentials: "loginErrorInvalidCredentials"
+        case .userExists: "loginErrorUserExists"
+        case .weakPassword: "loginErrorWeakPassword"
+        case .partialFailure: "signUpErrorPartialFailure"
+        case .network: "loginErrorNetwork"
+        case .generic: "loginErrorGeneric"
         }
     }
 }

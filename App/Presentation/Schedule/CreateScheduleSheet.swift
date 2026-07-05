@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CreateScheduleSheet: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @Bindable var viewModel: ScheduleListViewModel
 
     private let durationOptions: [TimeInterval] = [
@@ -82,8 +83,11 @@ struct CreateScheduleSheet: View {
 
     private func weekdayChip(_ weekday: Weekday) -> some View {
         let isSelected = viewModel.selectedWeekdays.contains(weekday)
-        let symbols = Calendar.current.shortWeekdaySymbols
-        let name = symbols[weekday.rawValue - 1]
+        // Weekday names follow the in-app language override, not the
+        // system locale.
+        var calendar = Calendar.current
+        calendar.locale = locale
+        let name = calendar.shortWeekdaySymbols[weekday.rawValue - 1]
 
         return Button {
             if isSelected {

@@ -88,6 +88,12 @@ row 確實消失，連帶 owned 資料經 CASCADE 清除）
 > Fakes：`FakeUpdateDisplayNameUseCase`、`FakeDeleteAccountUseCase`
 > （settable result / error + callCount）+ `FakeCurrentUserProvider`
 > （回固定 displayName）。
+>
+> **2026-07 語言設定功能修訂**（見 `docs/features/language-settings/`）：
+> ViewModel 不再自行解析 localized 字串（`String(localized:)` 不跟隨
+> App 內語言切換），改為暴露 `displayNameError: DisplayNameError?` enum
+> 與 `deleteFailed: Bool`；由 View 對應 `LocalizedStringKey` 顯示。以下
+> Then 的「顯示 localized『…』」皆指 View 層對應後的使用者可見結果。
 
 ### SVM1
 **Given** currentUser.displayName == "小明"
@@ -98,23 +104,26 @@ row 確實消失，連帶 owned 資料經 CASCADE 清除）
 **Given** displayName 編輯為 "小華"；fakeUseCase 設 success
 **When** saveDisplayName()
 **Then** didSaveDisplayName == true；displayNameError == nil；
-useCase.callCount == 1
+useCase.callCount == 1；**currentUserProvider.currentUser.displayName == "小華"**
+（save 成功後回寫 provider 快取，讓重開 Settings 顯示新名）
 
 ### SVM3
 **Given** displayName 編輯為 "   "（空白）
 **When** saveDisplayName()
-**Then** displayNameError 設為 localized「請輸入顯示名稱」；useCase **未被呼叫**
+**Then** displayNameError == `.empty`（View 顯示 localized「請輸入顯示
+名稱」）；useCase **未被呼叫**
 
 ### SVM4
 **Given** fakeUseCase 拋 `.persistenceFailure`
 **When** saveDisplayName()
-**Then** displayNameError 設為 localized「儲存失敗，請稍後再試」
+**Then** displayNameError == `.saveFailed`（View 顯示 localized「儲存
+失敗，請稍後再試」）
 
 ### SVM5
 **Given** fakeDeleteUseCase 設 success（再測一次設 error）
 **When** deleteAccount()
-**Then** 成功時回傳 true、deleteError == nil；失敗時回傳 false、
-deleteError 設為 localized「刪除失敗，請稍後再試」
+**Then** 成功時回傳 true、deleteFailed == false；失敗時回傳 false、
+deleteFailed == true（View 顯示 localized「刪除失敗，請稍後再試」）
 
 > View tests 不寫（依現行慣例，SwiftUI view 透過手動預覽 + e2e 驗）。
 
