@@ -21,4 +21,13 @@ enum UserProfileMapper {
         if message.contains("ALREADY_EXISTS") { return .alreadyExists }
         return .persistenceFailure
     }
+
+    /// Maps `update_user_profile`'s `RAISE EXCEPTION '<code>'` strings to
+    /// the typed Domain enum. The upsert path can't raise `ALREADY_EXISTS`
+    /// (ON CONFLICT DO UPDATE), so only the length code is distinct.
+    static func mapUpdateError(_ pg: PostgrestError) -> UserProfileError {
+        let message = pg.localizedDescription
+        if message.contains("INVALID_DISPLAY_NAME") { return .invalidDisplayName }
+        return .persistenceFailure
+    }
 }

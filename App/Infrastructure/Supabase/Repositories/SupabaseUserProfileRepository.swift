@@ -8,6 +8,10 @@ final class SupabaseUserProfileRepository: UserProfileRepositoryProtocol, @unche
         let targetDisplayName: String
     }
 
+    private struct UpdateUserProfileParams: Encodable, Sendable {
+        let targetDisplayName: String
+    }
+
     private func db() async throws -> PostgrestClient {
         let session = try await SupabaseClientProvider.auth.session
         return SupabaseClientProvider.database(accessToken: session.accessToken)
@@ -26,6 +30,31 @@ final class SupabaseUserProfileRepository: UserProfileRepositoryProtocol, @unche
                 .value
         } catch let pg as PostgrestError {
             throw UserProfileMapper.mapCreateError(pg)
+        } catch {
+            throw .persistenceFailure
+        }
+
+        guard let dto = dtos.first,
+              let profile = UserProfileMapper.toDomain(dto)
+        else {
+            throw .persistenceFailure
+        }
+        return profile
+    }
+
+    func update(displayName: String)
+        async throws(UserProfileError) -> UserProfile
+    {
+        let params = UpdateUserProfileParams(targetDisplayName: displayName)
+
+        let dtos: [UserProfileDTO]
+        do {
+            dtos = try await db()
+                .rpc("update_user_profile", params: params)
+                .execute()
+                .value
+        } catch let pg as PostgrestError {
+            throw UserProfileMapper.mapUpdateError(pg)
         } catch {
             throw .persistenceFailure
         }

@@ -27,4 +27,18 @@ nonisolated final class InMemoryUserProfileRepository: UserProfileRepositoryProt
     {
         store[userID]
     }
+
+    func update(displayName: String)
+        async throws(UserProfileError) -> UserProfile
+    {
+        let userID = UserID("preview-user")
+        let profile: UserProfile
+        do {
+            profile = try UserProfile(userID: userID, displayName: displayName)
+        } catch {
+            throw .invalidDisplayName
+        }
+        store[userID] = profile
+        return profile
+    }
 }

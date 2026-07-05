@@ -7,12 +7,14 @@ private let log = Logger(subsystem: "com.Kyoi.Shared-Schedule", category: "Auth"
 struct RootView: View {
     @State private var authState: AuthState = .loading
     private let userProfileRepository: SupabaseUserProfileRepository
+    private let accountRepository: SupabaseAccountRepository
     private let authSignUpClient: SupabaseAuthSignUpClient
     @State private var userProvider: SupabaseAuthCurrentUserProvider
 
     init() {
         let repo = SupabaseUserProfileRepository()
         self.userProfileRepository = repo
+        self.accountRepository = SupabaseAccountRepository()
         self.authSignUpClient = SupabaseAuthSignUpClient()
         self._userProvider = State(
             initialValue: SupabaseAuthCurrentUserProvider(userProfileRepository: repo)
@@ -31,10 +33,12 @@ struct RootView: View {
                         invitationRepository: SupabaseInvitationRepository(),
                         bookingRepository: SupabaseBookingRepository(),
                         userProfileRepository: userProfileRepository,
+                        accountRepository: accountRepository,
                         authSignUpClient: authSignUpClient,
                         currentUserProvider: userProvider
                     ),
-                    onSignOut: signOut
+                    onSignOut: signOut,
+                    onAccountDeleted: handleAccountDeleted
                 )
             case .unauthenticated:
                 LoginView(
@@ -66,6 +70,15 @@ struct RootView: View {
         }
         userProvider.clear()
         authState = .unauthenticated
+    }
+
+    /// After a successful account deletion the server session is already
+    /// invalid (the auth.users row is gone). Reuse the sign-out teardown:
+    /// the network sign-out 401s harmlessly and the keychain + in-memory
+    /// state are cleared, routing back to the login gate.
+    private func handleAccountDeleted() async {
+        log.info("account deleted; tearing down session")
+        await signOut()
     }
 
     private func observeAuthState() async {

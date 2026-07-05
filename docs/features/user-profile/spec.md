@@ -58,8 +58,10 @@ Slice A **不含**以下項目：
   → Slice B
 - **Password reset / forgot password** → 獨立 Slice
 - **Settings view**（自己看 / 編輯 displayName / logout / delete
-  account） → 跟 account deletion 同 Slice 一起做
+  account） → 跟 account deletion 同 Slice 一起做（已於 Slice B 實作，
+  見 `docs/features/account-settings/`）
 - **Account deletion**（Apple App Store 硬 gate） → 獨立 Slice
+  （已於 Slice B 實作，見 `docs/features/account-settings/`）
 - **Privacy manifest**（`PrivacyInfo.xcprivacy`） → 獨立 Slice
 - **User discovery / search** → mid-term roadmap
 - **displayName uniqueness constraint** → 等 user discovery 才需要

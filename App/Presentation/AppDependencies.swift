@@ -5,6 +5,7 @@ nonisolated struct AppDependencies: Sendable {
     let invitationRepository: any InvitationRepositoryProtocol
     let bookingRepository: any BookingRepositoryProtocol
     let userProfileRepository: any UserProfileRepositoryProtocol
+    let accountRepository: any AccountRepositoryProtocol
     let authSignUpClient: any AuthSignUpClientProtocol
     let currentUserProvider: any CurrentUserProviderProtocol
 
@@ -77,11 +78,20 @@ nonisolated struct AppDependencies: Sendable {
         )
     }
 
+    var updateDisplayNameUseCase: any UpdateDisplayNameUseCaseProtocol {
+        UpdateDisplayNameUseCase(userProfileRepository: userProfileRepository)
+    }
+
+    var deleteAccountUseCase: any DeleteAccountUseCaseProtocol {
+        DeleteAccountUseCase(accountRepository: accountRepository)
+    }
+
     static let live = AppDependencies(
         repository: InMemoryScheduleRepository(),
         invitationRepository: InMemoryInvitationRepository(),
         bookingRepository: InMemoryBookingRepository(),
         userProfileRepository: InMemoryUserProfileRepository(),
+        accountRepository: InMemoryAccountRepository(),
         authSignUpClient: InMemoryAuthSignUpClient(),
         currentUserProvider: InMemoryCurrentUserProvider()
     )

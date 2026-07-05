@@ -1102,5 +1102,112 @@ struct SupabaseIntegrationTests {
             #expect(result?.displayName == "Test Teacher A")
             #expect(result?.userID.rawValue == IntegrationTestSupport.userAID.uuidString.lowercased())
         }
+
+        @Test("PINT1. Fresh user with a profile updates displayName — row overwritten")
+        func updateExistingProfile_overwritesDisplayName() async throws {
+            // Given: fresh user that already has a profile
+            let (_, userID) = try await Self.signUpFreshUser(prefix: "pint1")
+            let repo = SupabaseUserProfileRepository()
+            _ = try await repo.create(displayName: "初名")
+
+            // When
+            let updated = try await repo.update(displayName: "新名")
+
+            // Then
+            #expect(updated.displayName == "新名")
+            #expect(updated.userID.rawValue == userID.uuidString.lowercased())
+            let fetched = try await repo.fetch(
+                userID: UserID(userID.uuidString.lowercased())
+            )
+            #expect(fetched?.displayName == "新名")
+        }
+
+        @Test("PINT2. Fresh user with no profile updates — upsert creates the row")
+        func updateWithNoProfile_upsertCreatesRow() async throws {
+            // Given: fresh user, profile creation skipped (legacy / partial signup)
+            let (_, userID) = try await Self.signUpFreshUser(prefix: "pint2")
+            let repo = SupabaseUserProfileRepository()
+
+            // When
+            let updated = try await repo.update(displayName: "初設")
+
+            // Then
+            #expect(updated.displayName == "初設")
+            let fetched = try await repo.fetch(
+                userID: UserID(userID.uuidString.lowercased())
+            )
+            #expect(fetched?.displayName == "初設")
+        }
+
+        @Test("PINT3. Update with 51-char displayName — throws .invalidDisplayName")
+        func updateWithTooLongDisplayName_throwsInvalidDisplayName() async throws {
+            // Given
+            _ = try await Self.signUpFreshUser(prefix: "pint3")
+            let repo = SupabaseUserProfileRepository()
+            let fiftyOne = String(repeating: "a", count: 51)
+
+            // When / Then
+            await #expect(throws: UserProfileError.invalidDisplayName) {
+                _ = try await repo.update(displayName: fiftyOne)
+            }
+        }
+    }
+
+    @Suite(.serialized) struct Accounts {
+
+        /// Sign up a brand-new user, leaving them signed-in. Mirrors the
+        /// UserProfiles helper — kept local since private statics aren't
+        /// shared across sub-suites.
+        private static func signUpFreshUser(prefix: String) async throws -> (email: String, userID: UUID) {
+            let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+            try? await SupabaseClientProvider.auth.signOut()
+            let session = try await SupabaseClientProvider.auth.signUp(
+                email: email,
+                password: IntegrationTestSupport.testPassword
+            )
+            return (email, session.user.id)
+        }
+
+        @Test("AINT1. Delete account that owns a profile + schedule — succeeds; re-signin fails (cascade + auth.users gone)")
+        func deleteAccountWithData_succeedsAndReSignInFails() async throws {
+            // Given: a fresh user with a profile and an owned schedule.
+            // The owned schedule proves the owner_id FK is ON DELETE
+            // CASCADE — a RESTRICT FK would make delete_account throw.
+            let (email, userID) = try await Self.signUpFreshUser(prefix: "aint1")
+            let profileRepo = SupabaseUserProfileRepository()
+            _ = try await profileRepo.create(displayName: "待刪")
+            let scheduleRepo = SupabaseScheduleRepository()
+            let schedule = Schedule(
+                id: ScheduleID(UUID()),
+                ownerID: UserID(userID.uuidString),
+                title: "To be cascaded \(UUID().uuidString.prefix(8))"
+            )
+            try await scheduleRepo.save(schedule)
+
+            // When
+            let accountRepo = SupabaseAccountRepository()
+            try await accountRepo.deleteAccount()
+
+            // Then: the auth.users row (and all cascaded data) is gone —
+            // signing back in with the same credentials must fail.
+            await #expect(throws: (any Error).self) {
+                _ = try await SupabaseClientProvider.auth.signIn(
+                    email: email,
+                    password: IntegrationTestSupport.testPassword
+                )
+            }
+        }
+
+        @Test("AINT2. delete_account without a session — fails (auth gate)")
+        func deleteAccountWithoutSession_fails() async throws {
+            // Given: no active session
+            try? await SupabaseClientProvider.auth.signOut()
+            let accountRepo = SupabaseAccountRepository()
+
+            // When / Then: the RPC requires auth.uid(); no session → fails
+            await #expect(throws: DeleteAccountError.self) {
+                try await accountRepo.deleteAccount()
+            }
+        }
     }
 }

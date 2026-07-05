@@ -13,4 +13,11 @@ protocol UserProfileRepositoryProtocol: Sendable {
     /// persistence errors.
     func fetch(userID: UserID)
         async throws(UserProfileError) -> UserProfile?
+
+    /// Upsert the caller's display name via the `update_user_profile`
+    /// RPC. Creates the row if the caller had none (legacy / partial
+    /// signup), otherwise overwrites it. Server enforces auth + length.
+    /// Returns the persisted profile.
+    func update(displayName: String)
+        async throws(UserProfileError) -> UserProfile
 }

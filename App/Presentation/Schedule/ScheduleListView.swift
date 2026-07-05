@@ -7,12 +7,19 @@ struct ScheduleListView: View {
     @State private var showSettings = false
     @State private var showRedeemSheet = false
     @State private var pendingSignOut = false
+    @State private var pendingAccountDeleted = false
     private let dependencies: AppDependencies
     private let onSignOut: (() async -> Void)?
+    private let onAccountDeleted: (() async -> Void)?
 
-    init(dependencies: AppDependencies, onSignOut: (() async -> Void)? = nil) {
+    init(
+        dependencies: AppDependencies,
+        onSignOut: (() async -> Void)? = nil,
+        onAccountDeleted: (() async -> Void)? = nil
+    ) {
         self.dependencies = dependencies
         self.onSignOut = onSignOut
+        self.onAccountDeleted = onAccountDeleted
         self.viewModel = ScheduleListViewModel(
             createScheduleUseCase: dependencies.createScheduleUseCase,
             listSchedulesUseCase: dependencies.listSchedulesUseCase,
@@ -66,17 +73,24 @@ struct ScheduleListView: View {
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack {
-                ThemeSettingsView(onSignOut: {
-                    showSettings = false
-                    pendingSignOut = true
-                })
-                    .navigationTitle("設定")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("完成") { showSettings = false }
-                        }
+                SettingsView(
+                    dependencies: dependencies,
+                    onSignOut: {
+                        showSettings = false
+                        pendingSignOut = true
+                    },
+                    onAccountDeleted: {
+                        showSettings = false
+                        pendingAccountDeleted = true
                     }
+                )
+                .navigationTitle("設定")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完成") { showSettings = false }
+                    }
+                }
             }
             .environment(themeManager)
         }
@@ -85,6 +99,11 @@ struct ScheduleListView: View {
             guard pendingSignOut else { return }
             pendingSignOut = false
             Task { await onSignOut?() }
+        }
+        .onChange(of: pendingAccountDeleted) {
+            guard pendingAccountDeleted else { return }
+            pendingAccountDeleted = false
+            Task { await onAccountDeleted?() }
         }
     }
 
