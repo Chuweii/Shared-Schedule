@@ -19,6 +19,16 @@ final class SupabaseAuthCurrentUserProvider: CurrentUserProviderProtocol, @unche
         return user
     }
 
+    /// The authenticated view tree is torn down asynchronously after
+    /// sign-out: in-flight ViewModel tasks and NavigationLink
+    /// destination closures can still read `currentUser` for one more
+    /// render/await cycle. Keeping the last user (instead of nil-ing
+    /// the cache) makes that window benign — RLS makes any late
+    /// network call fail server-side, and the next sign-in overwrites
+    /// the cache via `update(from:)`. `fatalError` above still guards
+    /// the true invariant: authenticated UI shown before any sign-in
+    /// ever hydrated the cache.
+
     /// Hydrates `currentUser` after a successful sign-in. Fetches the
     /// caller's `user_profiles` row to resolve `displayName`; on miss
     /// (legacy users, or freshly signed-up users whose
@@ -54,6 +64,8 @@ final class SupabaseAuthCurrentUserProvider: CurrentUserProviderProtocol, @unche
     }
 
     func clear() {
-        cachedUser = nil
+        // Intentionally keeps `cachedUser` — see the note on
+        // `currentUser`. Sign-out routing is owned by RootView's
+        // auth-state switch, not by this cache.
     }
 }
