@@ -216,7 +216,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -240,6 +240,17 @@ otp_expiry = 3600
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
+
+# Sign-up confirmation email: show the 6-digit OTP (the default template
+# only contains {{ .ConfirmationURL }}, which the app does not handle).
+[auth.email.template.confirmation]
+subject = "Shared Schedule 驗證碼"
+content_path = "./supabase/templates/confirmation.html"
+
+# Password recovery email: same OTP treatment as confirmation.
+[auth.email.template.recovery]
+subject = "Shared Schedule 密碼重設驗證碼"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

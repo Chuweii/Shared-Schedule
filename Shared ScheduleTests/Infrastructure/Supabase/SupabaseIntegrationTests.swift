@@ -487,19 +487,17 @@ struct SupabaseIntegrationTests {
 
         @Test("Auth-DN1. Fresh signed-up user without profile — provider falls back to email")
         func freshSignUpWithoutProfile_fallsBackToEmail() async throws {
-            // Given: brand-new auth user, NO profile row
-            let freshEmail = "auth-dn1-\(UUID().uuidString.prefix(8))@example.com".lowercased()
-            try? await SupabaseClientProvider.auth.signOut()
-            let session = try await SupabaseClientProvider.auth.signUp(
-                email: freshEmail,
-                password: IntegrationTestSupport.testPassword
+            // Given: brand-new confirmed auth user, NO profile row
+            let (freshEmail, _) = try await IntegrationTestSupport.signUpFreshUserConfirmed(
+                prefix: "auth-dn1"
             )
+            let authUser = try await SupabaseClientProvider.auth.session.user
 
             // When
             let provider = SupabaseAuthCurrentUserProvider(
                 userProfileRepository: SupabaseUserProfileRepository()
             )
-            await provider.update(from: session.user)
+            await provider.update(from: authUser)
 
             // Then: fallback path triggers
             #expect(provider.currentUser.displayName == freshEmail)
@@ -831,11 +829,8 @@ struct SupabaseIntegrationTests {
                 expiresAt: Date().addingTimeInterval(60 * 60 * 24)
             ))
 
-            let freshEmail = "bint8b-\(UUID().uuidString.prefix(8))@example.com".lowercased()
-            try? await SupabaseClientProvider.auth.signOut()
-            _ = try await SupabaseClientProvider.auth.signUp(
-                email: freshEmail,
-                password: IntegrationTestSupport.testPassword
+            let (freshEmail, _) = try await IntegrationTestSupport.signUpFreshUserConfirmed(
+                prefix: "bint8b"
             )
             // Intentionally skip create_user_profile — partial signup state.
 
@@ -1013,17 +1008,13 @@ struct SupabaseIntegrationTests {
 
     @Suite(.serialized) struct UserProfiles {
 
-        /// Sign up a brand-new user, leaving them signed-in. Used by
-        /// tests that need a profile-less account to exercise the
-        /// fresh-create path or the partial-signup fallback.
+        /// Sign up a brand-new confirmed user, leaving them signed-in.
+        /// Used by tests that need a profile-less account to exercise
+        /// the fresh-create path or the partial-signup fallback.
+        /// (Slice C: `enable_confirmations = true` means plain signUp
+        /// yields no session — confirmation goes through Mailpit OTP.)
         private static func signUpFreshUser(prefix: String) async throws -> (email: String, userID: UUID) {
-            let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
-            try? await SupabaseClientProvider.auth.signOut()
-            let session = try await SupabaseClientProvider.auth.signUp(
-                email: email,
-                password: IntegrationTestSupport.testPassword
-            )
-            return (email, session.user.id)
+            try await IntegrationTestSupport.signUpFreshUserConfirmed(prefix: prefix)
         }
 
         @Test("UINT1. Fresh signed-up user creates own profile — returns UserProfile, DB row exists")
@@ -1155,17 +1146,11 @@ struct SupabaseIntegrationTests {
 
     @Suite(.serialized) struct Accounts {
 
-        /// Sign up a brand-new user, leaving them signed-in. Mirrors the
-        /// UserProfiles helper — kept local since private statics aren't
-        /// shared across sub-suites.
+        /// Sign up a brand-new confirmed user, leaving them signed-in.
+        /// Mirrors the UserProfiles helper — kept local since private
+        /// statics aren't shared across sub-suites.
         private static func signUpFreshUser(prefix: String) async throws -> (email: String, userID: UUID) {
-            let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
-            try? await SupabaseClientProvider.auth.signOut()
-            let session = try await SupabaseClientProvider.auth.signUp(
-                email: email,
-                password: IntegrationTestSupport.testPassword
-            )
-            return (email, session.user.id)
+            try await IntegrationTestSupport.signUpFreshUserConfirmed(prefix: prefix)
         }
 
         @Test("AINT1. Delete account that owns a profile + schedule — succeeds; re-signin fails (cascade + auth.users gone)")

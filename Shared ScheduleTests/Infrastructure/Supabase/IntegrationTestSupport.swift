@@ -58,4 +58,18 @@ enum IntegrationTestSupport {
     static func signOut() async {
         try? await SupabaseClientProvider.auth.signOut()
     }
+
+    /// Sign up a brand-new user and complete email confirmation via the
+    /// Mailpit OTP, leaving them signed in (same end state the old
+    /// pre-confirmations `signUp` helper produced). No profile row is
+    /// created. Requires `enable_confirmations = true` locally.
+    static func signUpFreshUserConfirmed(prefix: String) async throws -> (email: String, userID: UUID) {
+        let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+        let auth = SupabaseClientProvider.auth
+        try? await auth.signOut()
+        _ = try await auth.signUp(email: email, password: testPassword)
+        let otp = try await MailpitClient.waitForLatestOTP(to: email)
+        let response = try await auth.verifyOTP(email: email, token: otp, type: .signup)
+        return (email, response.user.id)
+    }
 }
