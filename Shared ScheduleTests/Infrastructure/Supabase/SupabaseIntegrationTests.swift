@@ -1195,4 +1195,83 @@ struct SupabaseIntegrationTests {
             }
         }
     }
+
+    // MARK: - Email verification (Slice C — enable_confirmations = true)
+
+    @Suite(.serialized) struct EmailVerification {
+
+        /// Sign up a fresh user WITHOUT confirming, returning the email.
+        private static func signUpUnconfirmed(prefix: String) async throws -> String {
+            let email = "\(prefix)-\(UUID().uuidString.prefix(8))@example.com".lowercased()
+            try? await SupabaseClientProvider.auth.signOut()
+            _ = try await SupabaseClientProvider.auth.signUp(
+                email: email,
+                password: IntegrationTestSupport.testPassword
+            )
+            return email
+        }
+
+        @Test("CINT1. signUp 無 session → Mailpit 取 6 碼 → verifySignUpOTP → session 有效")
+        func signUpThenVerifyOTP_yieldsValidSession() async throws {
+            // Given: fresh sign-up; confirmations on means no session yet
+            let email = try await Self.signUpUnconfirmed(prefix: "cint1")
+            await #expect(throws: (any Error).self, "signUp must not create a session") {
+                _ = try await SupabaseClientProvider.auth.session
+            }
+
+            // When: pull the OTP from Mailpit and verify via the adapter
+            let otp = try await MailpitClient.waitForLatestOTP(to: email)
+            let client = SupabaseAuthSessionClient()
+            try await client.verifySignUpOTP(email: email, token: otp)
+
+            // Then: a session now exists for that user
+            let session = try await SupabaseClientProvider.auth.session
+            #expect(session.user.email == email)
+        }
+
+        @Test("CINT2. 未驗證帳號 signIn → .emailNotConfirmed（釘住 400 + msg 字串比對）")
+        func signInBeforeConfirmation_throwsEmailNotConfirmed() async throws {
+            // Given
+            let email = try await Self.signUpUnconfirmed(prefix: "cint2")
+            let client = SupabaseAuthSessionClient()
+
+            // When / Then
+            await #expect(throws: AuthSignInError.emailNotConfirmed) {
+                try await client.signIn(
+                    email: email,
+                    password: IntegrationTestSupport.testPassword
+                )
+            }
+        }
+
+        @Test("CINT3. 錯誤驗證碼 → .invalidOrExpiredCode")
+        func verifyWithWrongCode_throwsInvalidOrExpiredCode() async throws {
+            // Given
+            let email = try await Self.signUpUnconfirmed(prefix: "cint3")
+            let correctOTP = try await MailpitClient.waitForLatestOTP(to: email)
+            let wrongCode = correctOTP == "000000" ? "000001" : "000000"
+            let client = SupabaseAuthSessionClient()
+
+            // When / Then
+            await #expect(throws: VerifyOTPClientError.invalidOrExpiredCode) {
+                try await client.verifySignUpOTP(email: email, token: wrongCode)
+            }
+        }
+
+        @Test("CINT4. resendSignUpConfirmation → 該信箱信件數增加")
+        func resendConfirmation_deliversSecondEmail() async throws {
+            // Given: one confirmation email already delivered
+            let email = try await Self.signUpUnconfirmed(prefix: "cint4")
+            _ = try await MailpitClient.waitForMessageIDs(to: email, atLeast: 1)
+
+            // When (local max_frequency = "1s" — wait it out first)
+            try await Task.sleep(for: .seconds(1.5))
+            let client = SupabaseAuthSessionClient()
+            try await client.resendSignUpConfirmation(email: email)
+
+            // Then
+            let ids = try await MailpitClient.waitForMessageIDs(to: email, atLeast: 2)
+            #expect(ids.count == 2)
+        }
+    }
 }

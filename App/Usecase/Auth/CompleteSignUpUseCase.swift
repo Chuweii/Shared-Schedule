@@ -2,14 +2,9 @@ import Foundation
 
 nonisolated struct CompleteSignUpUseCase: CompleteSignUpUseCaseProtocol {
     let authSignUpClient: any AuthSignUpClientProtocol
-    let userProfileRepository: any UserProfileRepositoryProtocol
 
-    init(
-        authSignUpClient: any AuthSignUpClientProtocol,
-        userProfileRepository: any UserProfileRepositoryProtocol
-    ) {
+    init(authSignUpClient: any AuthSignUpClientProtocol) {
         self.authSignUpClient = authSignUpClient
-        self.userProfileRepository = userProfileRepository
     }
 
     func completeSignUp(email: String, password: String, displayName: String)
@@ -24,7 +19,11 @@ nonisolated struct CompleteSignUpUseCase: CompleteSignUpUseCaseProtocol {
         else { throw .invalidDisplayName }
 
         do {
-            try await authSignUpClient.signUp(email: trimmedEmail, password: password)
+            try await authSignUpClient.signUp(
+                email: trimmedEmail,
+                password: password,
+                displayName: trimmedDisplayName
+            )
         } catch AuthSignUpError.userAlreadyExists {
             throw .userAlreadyExists
         } catch AuthSignUpError.weakPassword {
@@ -33,19 +32,6 @@ nonisolated struct CompleteSignUpUseCase: CompleteSignUpUseCaseProtocol {
             throw .network
         } catch {
             throw .generic
-        }
-
-        do {
-            _ = try await userProfileRepository.create(displayName: trimmedDisplayName)
-        } catch UserProfileError.alreadyExists {
-            // Retry race after a previous partial-failure: treat as success.
-            return
-        } catch UserProfileError.invalidDisplayName {
-            // Server-side rejected length even though client passed; surface
-            // distinctly so VM doesn't silently call it a partial failure.
-            throw .invalidDisplayName
-        } catch {
-            throw .partialFailure
         }
     }
 }

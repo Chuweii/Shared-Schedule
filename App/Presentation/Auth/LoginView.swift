@@ -5,10 +5,25 @@ struct LoginView: View {
     @State private var viewModel: LoginViewModel
     @State private var isSignUpMode = false
 
-    init(completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil) {
+    private let verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)?
+    private let resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)?
+    private let currentUserProvider: (any CurrentUserProviderProtocol)?
+
+    init(
+        signInUseCase: (any SignInUseCaseProtocol)? = nil,
+        completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil,
+        verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)? = nil,
+        resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)? = nil,
+        currentUserProvider: (any CurrentUserProviderProtocol)? = nil
+    ) {
         self._viewModel = State(initialValue: LoginViewModel(
-            completeSignUpUseCase: completeSignUpUseCase
+            signInUseCase: signInUseCase,
+            completeSignUpUseCase: completeSignUpUseCase,
+            resendVerificationCodeUseCase: resendVerificationCodeUseCase
         ))
+        self.verifyEmailOTPUseCase = verifyEmailOTPUseCase
+        self.resendVerificationCodeUseCase = resendVerificationCodeUseCase
+        self.currentUserProvider = currentUserProvider
     }
 
     var body: some View {
@@ -26,6 +41,10 @@ struct LoginView: View {
                     .multilineTextAlignment(.center)
             }
 
+            if viewModel.error == .emailNotConfirmed {
+                resendAndVerifyButton
+            }
+
             actionButton
 
             toggleModeButton
@@ -34,6 +53,9 @@ struct LoginView: View {
         }
         .padding(.horizontal, 32)
         .background(theme.bgPrimary)
+        .fullScreenCover(item: $viewModel.pendingVerification) { pending in
+            verificationScreen(for: pending)
+        }
     }
 
     // MARK: - Subviews
@@ -106,6 +128,38 @@ struct LoginView: View {
         .disabled(viewModel.isLoading)
     }
 
+    private var resendAndVerifyButton: some View {
+        Button {
+            Task { await viewModel.proceedToVerification() }
+        } label: {
+            Text("loginButtonResendAndVerify")
+                .font(.subheadline)
+                .foregroundStyle(theme.system)
+        }
+        .disabled(viewModel.isLoading)
+    }
+
+    /// The OTP screen never dismisses itself on success — `.signedIn`
+    /// flips RootView to the authenticated branch, tearing down this
+    /// whole subtree (cover included).
+    @ViewBuilder
+    private func verificationScreen(
+        for pending: LoginViewModel.PendingVerification
+    ) -> some View {
+        if let verifyEmailOTPUseCase, let resendVerificationCodeUseCase, let currentUserProvider {
+            EmailVerificationView(
+                viewModel: EmailVerificationViewModel(
+                    email: pending.email,
+                    displayName: pending.displayName,
+                    verifyEmailOTPUseCase: verifyEmailOTPUseCase,
+                    resendVerificationCodeUseCase: resendVerificationCodeUseCase,
+                    currentUserProvider: currentUserProvider
+                ),
+                onBack: { viewModel.pendingVerification = nil }
+            )
+        }
+    }
+
     private var toggleModeButton: some View {
         Button {
             isSignUpMode.toggle()
@@ -140,9 +194,9 @@ struct LoginView: View {
         case .emptyDisplayName: "signUpErrorEmptyDisplayName"
         case .displayNameTooLong: "signUpErrorDisplayNameTooLong"
         case .invalidCredentials: "loginErrorInvalidCredentials"
+        case .emailNotConfirmed: "loginErrorEmailNotConfirmed"
         case .userExists: "loginErrorUserExists"
         case .weakPassword: "loginErrorWeakPassword"
-        case .partialFailure: "signUpErrorPartialFailure"
         case .network: "loginErrorNetwork"
         case .generic: "loginErrorGeneric"
         }

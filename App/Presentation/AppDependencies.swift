@@ -8,6 +8,10 @@ nonisolated struct AppDependencies: Sendable {
     let accountRepository: any AccountRepositoryProtocol
     let authSignUpClient: any AuthSignUpClientProtocol
     let currentUserProvider: any CurrentUserProviderProtocol
+    /// Only the pre-auth flow (LoginView, RootView-wired) needs the
+    /// real Supabase adapter; the default keeps previews working
+    /// without touching the authenticated-branch call sites.
+    var authSessionClient: any AuthSessionClientProtocol = InMemoryAuthSessionClient()
 
     var createScheduleUseCase: any CreateScheduleUseCaseProtocol {
         CreateScheduleUseCase(repository: repository, currentUserProvider: currentUserProvider)
@@ -72,10 +76,22 @@ nonisolated struct AppDependencies: Sendable {
     }
 
     var completeSignUpUseCase: any CompleteSignUpUseCaseProtocol {
-        CompleteSignUpUseCase(
-            authSignUpClient: authSignUpClient,
+        CompleteSignUpUseCase(authSignUpClient: authSignUpClient)
+    }
+
+    var signInUseCase: any SignInUseCaseProtocol {
+        SignInUseCase(authSessionClient: authSessionClient)
+    }
+
+    var verifyEmailOTPUseCase: any VerifyEmailOTPUseCaseProtocol {
+        VerifyEmailOTPUseCase(
+            authSessionClient: authSessionClient,
             userProfileRepository: userProfileRepository
         )
+    }
+
+    var resendVerificationCodeUseCase: any ResendVerificationCodeUseCaseProtocol {
+        ResendVerificationCodeUseCase(authSessionClient: authSessionClient)
     }
 
     var updateDisplayNameUseCase: any UpdateDisplayNameUseCaseProtocol {

@@ -1,9 +1,8 @@
 protocol CompleteSignUpUseCaseProtocol: Sendable {
-    /// Atomic from the VM's perspective: signs up via Supabase Auth
-    /// then creates the profile. Both must succeed; profile-create
-    /// failures after auth-signup success surface as `.partialFailure`.
-    /// `.alreadyExists` from the profile repo is treated as success
-    /// (retry race after a previous partial-failure attempt).
+    /// Registers via Supabase Auth and triggers the confirmation email
+    /// (email confirmations are enabled, so no session is returned).
+    /// The `user_profiles` row is created later by
+    /// `VerifyEmailOTPUseCase`, once OTP verification yields a session.
     func completeSignUp(email: String, password: String, displayName: String)
         async throws(CompleteSignUpError)
 }

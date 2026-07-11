@@ -1,113 +1,104 @@
 import Testing
 import Foundation
-import Auth
 @testable import Shared_Schedule
 
 struct LoginViewModelTests {
 
-    // MARK: - describe
-
-    @Test("URLError → .network")
-    func describe_URLError_returnsNetworkMessage() {
-        // Given
-        let error = URLError(.notConnectedToInternet)
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .network)
+    @MainActor
+    private func makeSUT() -> (
+        vm: LoginViewModel,
+        fakeSignIn: FakeSignInUseCase,
+        fakeSignUp: FakeCompleteSignUpUseCase,
+        fakeResend: FakeResendVerificationCodeUseCase
+    ) {
+        let fakeSignIn = FakeSignInUseCase()
+        let fakeSignUp = FakeCompleteSignUpUseCase()
+        let fakeResend = FakeResendVerificationCodeUseCase()
+        let vm = LoginViewModel(
+            signInUseCase: fakeSignIn,
+            completeSignUpUseCase: fakeSignUp,
+            resendVerificationCodeUseCase: fakeResend
+        )
+        return (vm, fakeSignIn, fakeSignUp, fakeResend)
     }
 
-    @Test("AuthError 含 weakPassword → .weakPassword")
-    func describe_authErrorWithWeakPassword_returnsWeakPasswordMessage() throws {
-        // Given — 422 + weak_password JSON
-        let json = #"""
-        {"code": 422, "weak_password": {"reasons": ["length"]}}
-        """#.data(using: .utf8)!
-        let apiError = try AuthClient.Configuration.jsonDecoder.decode(AuthError.APIError.self, from: json)
-        let error = AuthError.api(apiError)
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .weakPassword)
-    }
-
-    @Test("AuthError 400 → .invalidCredentials")
-    func describe_authError400_returnsInvalidCredentialsMessage() throws {
-        // Given
-        let apiError = try decodeAPIError(code: 400)
-        let error = AuthError.api(apiError)
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .invalidCredentials)
-    }
-
-    @Test("AuthError 422 不含 weakPassword → .userExists")
-    func describe_authError422WithoutWeakPassword_returnsUserExistsMessage() throws {
-        // Given
-        let apiError = try decodeAPIError(code: 422)
-        let error = AuthError.api(apiError)
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .userExists)
-    }
-
-    @Test("AuthError 其他 status → .generic")
-    func describe_authErrorOtherCode_returnsGenericMessage() throws {
-        // Given
-        let apiError = try decodeAPIError(code: 500)
-        let error = AuthError.api(apiError)
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .generic)
-    }
-
-    @Test("非 AuthError、非 URLError → .generic")
-    func describe_unknownError_returnsGenericMessage() {
-        // Given
-        struct OtherError: Error {}
-        let error = OtherError()
-
-        // When
-        let message = LoginViewModel.describe(error)
-
-        // Then
-        #expect(message == .generic)
-    }
-
-    // MARK: - Helpers
-
-    private func decodeAPIError(code: Int) throws -> AuthError.APIError {
-        let json = "{\"code\": \(code)}".data(using: .utf8)!
-        return try AuthClient.Configuration.jsonDecoder.decode(AuthError.APIError.self, from: json)
-    }
-
-    // MARK: - signUp() — Slice A (LVM1-LVM4)
+    // MARK: - signIn (Slice C)
 
     @MainActor
-    private func makeSignUpSUT() -> (vm: LoginViewModel, fakeUseCase: FakeCompleteSignUpUseCase) {
-        let fake = FakeCompleteSignUpUseCase()
-        let vm = LoginViewModel(completeSignUpUseCase: fake)
-        return (vm, fake)
+    @Test("LVM-C1. signIn 兩欄有效 + fakeSignIn 設成功 → error nil、isLoading 結束為 false、useCase called 1 次")
+    func signIn_validInputs_succeedsAndCallsUseCase() async {
+        // Given
+        let (vm, fakeSignIn, _, _) = makeSUT()
+        vm.email = "x@y.com"
+        vm.password = "password123"
+
+        // When
+        await vm.signIn()
+
+        // Then
+        #expect(vm.error == nil)
+        #expect(vm.isLoading == false)
+        #expect(fakeSignIn.callCount == 1)
+        #expect(fakeSignIn.lastEmail == "x@y.com")
+        #expect(fakeSignIn.lastPassword == "password123")
     }
+
+    @MainActor
+    @Test("LVM-C2. signIn fakeSignIn 拋 .emailNotConfirmed → error == .emailNotConfirmed、pendingVerification 仍為 nil")
+    func signIn_emailNotConfirmed_setsErrorWithoutNavigating() async {
+        // Given
+        let (vm, fakeSignIn, _, _) = makeSUT()
+        fakeSignIn.errorToThrow = .emailNotConfirmed
+        vm.email = "x@y.com"
+        vm.password = "password123"
+
+        // When
+        await vm.signIn()
+
+        // Then
+        #expect(vm.error == .emailNotConfirmed)
+        #expect(vm.pendingVerification == nil)
+    }
+
+    @MainActor
+    @Test("signIn fakeSignIn 拋 .invalidCredentials → error == .invalidCredentials")
+    func signIn_invalidCredentials_setsError() async {
+        // Given
+        let (vm, fakeSignIn, _, _) = makeSUT()
+        fakeSignIn.errorToThrow = .invalidCredentials
+        vm.email = "x@y.com"
+        vm.password = "password123"
+
+        // When
+        await vm.signIn()
+
+        // Then
+        #expect(vm.error == .invalidCredentials)
+    }
+
+    @MainActor
+    @Test("signIn email 留空（pre-flight）→ error == .emptyEmail、useCase 未呼叫")
+    func signIn_emptyEmail_failsPreflight() async {
+        // Given
+        let (vm, fakeSignIn, _, _) = makeSUT()
+        vm.email = "   "
+        vm.password = "password123"
+
+        // When
+        await vm.signIn()
+
+        // Then
+        #expect(vm.error == .emptyEmail)
+        #expect(fakeSignIn.callCount == 0)
+    }
+
+    // MARK: - signUp (Slice A, LVM1-LVM3)
 
     @MainActor
     @Test("LVM1. signUp 三欄全有效 + fakeUseCase 設成功 → error nil、isLoading 結束為 false、useCase called 1 次帶正確 args")
     func signUp_validInputs_succeedsAndCallsUseCase() async {
         // Given
-        let (vm, fakeUseCase) = makeSignUpSUT()
+        let (vm, _, fakeSignUp, _) = makeSUT()
         vm.email = "x@y.com"
         vm.password = "password123"
         vm.displayName = "小明"
@@ -118,17 +109,17 @@ struct LoginViewModelTests {
         // Then
         #expect(vm.error == nil)
         #expect(vm.isLoading == false)
-        #expect(fakeUseCase.callCount == 1)
-        #expect(fakeUseCase.lastEmail == "x@y.com")
-        #expect(fakeUseCase.lastPassword == "password123")
-        #expect(fakeUseCase.lastDisplayName == "小明")
+        #expect(fakeSignUp.callCount == 1)
+        #expect(fakeSignUp.lastEmail == "x@y.com")
+        #expect(fakeSignUp.lastPassword == "password123")
+        #expect(fakeSignUp.lastDisplayName == "小明")
     }
 
     @MainActor
     @Test("LVM2. signUp displayName 留空 → error == .emptyDisplayName、useCase 未呼叫")
     func signUp_emptyDisplayName_failsPreflight() async {
         // Given
-        let (vm, fakeUseCase) = makeSignUpSUT()
+        let (vm, _, fakeSignUp, _) = makeSUT()
         vm.email = "x@y.com"
         vm.password = "password123"
         vm.displayName = ""
@@ -138,15 +129,15 @@ struct LoginViewModelTests {
 
         // Then
         #expect(vm.error == .emptyDisplayName)
-        #expect(fakeUseCase.callCount == 0)
+        #expect(fakeSignUp.callCount == 0)
     }
 
     @MainActor
     @Test("LVM3. signUp fakeUseCase 拋 .userAlreadyExists → error == .userExists")
     func signUp_useCaseUserAlreadyExists_setsErrorMessage() async {
         // Given
-        let (vm, fakeUseCase) = makeSignUpSUT()
-        fakeUseCase.errorToThrow = .userAlreadyExists
+        let (vm, _, fakeSignUp, _) = makeSUT()
+        fakeSignUp.errorToThrow = .userAlreadyExists
         vm.email = "x@y.com"
         vm.password = "password123"
         vm.displayName = "小明"
@@ -158,20 +149,45 @@ struct LoginViewModelTests {
         #expect(vm.error == .userExists)
     }
 
+    // MARK: - pendingVerification (Slice C)
+
     @MainActor
-    @Test("LVM4. signUp fakeUseCase 拋 .partialFailure → error == .partialFailure")
-    func signUp_useCasePartialFailure_setsRestartMessage() async {
+    @Test("LVM-C3. signUp 成功 → pendingVerification == (email, displayName)，不再直接進 app")
+    func signUp_success_setsPendingVerification() async {
         // Given
-        let (vm, fakeUseCase) = makeSignUpSUT()
-        fakeUseCase.errorToThrow = .partialFailure
-        vm.email = "x@y.com"
+        let (vm, _, _, _) = makeSUT()
+        vm.email = "  x@y.com  "
         vm.password = "password123"
-        vm.displayName = "小明"
+        vm.displayName = "  小明  "
 
         // When
         await vm.signUp()
 
         // Then
-        #expect(vm.error == .partialFailure)
+        #expect(vm.pendingVerification == LoginViewModel.PendingVerification(
+            email: "x@y.com",
+            displayName: "小明"
+        ))
+    }
+
+    @MainActor
+    @Test("LVM-C4. proceedToVerification → resend called 1 次、pendingVerification == (email, nil)、error 清空")
+    func proceedToVerification_resendsAndNavigates() async {
+        // Given
+        let (vm, _, _, fakeResend) = makeSUT()
+        vm.email = "x@y.com"
+        vm.error = .emailNotConfirmed
+
+        // When
+        await vm.proceedToVerification()
+
+        // Then
+        #expect(fakeResend.callCount == 1)
+        #expect(fakeResend.lastEmail == "x@y.com")
+        #expect(vm.pendingVerification == LoginViewModel.PendingVerification(
+            email: "x@y.com",
+            displayName: nil
+        ))
+        #expect(vm.error == nil)
     }
 }

@@ -9,6 +9,7 @@ struct RootView: View {
     private let userProfileRepository: SupabaseUserProfileRepository
     private let accountRepository: SupabaseAccountRepository
     private let authSignUpClient: SupabaseAuthSignUpClient
+    private let authSessionClient: SupabaseAuthSessionClient
     @State private var userProvider: SupabaseAuthCurrentUserProvider
 
     init() {
@@ -16,6 +17,7 @@ struct RootView: View {
         self.userProfileRepository = repo
         self.accountRepository = SupabaseAccountRepository()
         self.authSignUpClient = SupabaseAuthSignUpClient()
+        self.authSessionClient = SupabaseAuthSessionClient()
         self._userProvider = State(
             initialValue: SupabaseAuthCurrentUserProvider(userProfileRepository: repo)
         )
@@ -42,10 +44,18 @@ struct RootView: View {
                 )
             case .unauthenticated:
                 LoginView(
+                    signInUseCase: SignInUseCase(authSessionClient: authSessionClient),
                     completeSignUpUseCase: CompleteSignUpUseCase(
-                        authSignUpClient: authSignUpClient,
+                        authSignUpClient: authSignUpClient
+                    ),
+                    verifyEmailOTPUseCase: VerifyEmailOTPUseCase(
+                        authSessionClient: authSessionClient,
                         userProfileRepository: userProfileRepository
-                    )
+                    ),
+                    resendVerificationCodeUseCase: ResendVerificationCodeUseCase(
+                        authSessionClient: authSessionClient
+                    ),
+                    currentUserProvider: userProvider
                 )
             }
         }

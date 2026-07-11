@@ -1,4 +1,3 @@
-import Auth
 import Foundation
 
 @Observable
@@ -12,11 +11,22 @@ final class LoginViewModel {
         case emptyDisplayName
         case displayNameTooLong
         case invalidCredentials
+        case emailNotConfirmed
         case userExists
         case weakPassword
-        case partialFailure
         case network
         case generic
+    }
+
+    /// Set when the flow should move to the OTP verification screen.
+    /// `displayName` is non-nil right after sign-up (profile is created
+    /// post-verification) and nil on the deferred-verification path
+    /// (re-entry from the sign-in `.emailNotConfirmed` error).
+    struct PendingVerification: Equatable, Identifiable {
+        let email: String
+        let displayName: String?
+
+        var id: String { email }
     }
 
     var email = ""
@@ -24,26 +34,34 @@ final class LoginViewModel {
     var displayName = ""
     var isLoading = false
     var error: LoginError?
+    var pendingVerification: PendingVerification?
 
-    private let authClient: AuthClient
+    private let signInUseCase: (any SignInUseCaseProtocol)?
     private let completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)?
+    private let resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)?
 
     init(
-        authClient: AuthClient = SupabaseClientProvider.auth,
-        completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil
+        signInUseCase: (any SignInUseCaseProtocol)? = nil,
+        completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil,
+        resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)? = nil
     ) {
-        self.authClient = authClient
+        self.signInUseCase = signInUseCase
         self.completeSignUpUseCase = completeSignUpUseCase
+        self.resendVerificationCodeUseCase = resendVerificationCodeUseCase
     }
 
     func signIn() async {
+        guard let signInUseCase else {
+            error = .generic
+            return
+        }
         guard validateSignInInput() else { return }
         isLoading = true
         error = nil
         do {
-            try await authClient.signIn(email: email, password: password)
+            try await signInUseCase.signIn(email: email, password: password)
         } catch {
-            self.error = Self.describe(error)
+            self.error = Self.describeSignIn(error)
         }
         isLoading = false
     }
@@ -65,27 +83,46 @@ final class LoginViewModel {
                 password: password,
                 displayName: displayName
             )
+            // No session yet (email confirmations enabled) — move to
+            // the OTP screen carrying the displayName for the
+            // post-verification profile creation.
+            pendingVerification = PendingVerification(
+                email: trimmedEmail,
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
         } catch {
             self.error = Self.describeSignUp(error)
         }
         isLoading = false
     }
 
-    static func describe(_ error: Error) -> LoginError {
-        if error is URLError {
-            return .network
+    /// Entry from the sign-in `.emailNotConfirmed` error: resend the
+    /// code (best-effort — the OTP screen has its own resend button)
+    /// and move to verification without a displayName (the profile
+    /// will be repaired via Settings if it never got created).
+    func proceedToVerification() async {
+        guard let resendVerificationCodeUseCase else {
+            error = .generic
+            return
         }
-        if case let AuthError.api(apiError) = error {
-            if apiError.weakPassword != nil {
-                return .weakPassword
-            }
-            switch apiError.code {
-            case 400: return .invalidCredentials
-            case 422: return .userExists
-            default: break
-            }
+        isLoading = true
+        try? await resendVerificationCodeUseCase.resend(email: email)
+        error = nil
+        pendingVerification = PendingVerification(email: trimmedEmail, displayName: nil)
+        isLoading = false
+    }
+
+    private var trimmedEmail: String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func describeSignIn(_ error: SignInError) -> LoginError {
+        switch error {
+        case .emailNotConfirmed: return .emailNotConfirmed
+        case .invalidCredentials: return .invalidCredentials
+        case .network: return .network
+        case .generic: return .generic
         }
-        return .generic
     }
 
     static func describeSignUp(_ error: CompleteSignUpError) -> LoginError {
@@ -98,14 +135,13 @@ final class LoginViewModel {
         case .invalidDisplayName: return .displayNameTooLong
         case .userAlreadyExists: return .userExists
         case .weakPassword: return .weakPassword
-        case .partialFailure: return .partialFailure
         case .network: return .network
         case .generic: return .generic
         }
     }
 
     private func validateSignInInput() -> Bool {
-        if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if trimmedEmail.isEmpty {
             error = .emptyEmail
             return false
         }
@@ -117,7 +153,7 @@ final class LoginViewModel {
     }
 
     private func validateSignUpInput() -> Bool {
-        if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if trimmedEmail.isEmpty {
             error = .emptyEmail
             return false
         }

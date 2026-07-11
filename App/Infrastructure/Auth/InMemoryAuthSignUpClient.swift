@@ -3,7 +3,9 @@
 /// succeeds — previews that exercise sign-up error paths should wire a
 /// fake usecase at the ViewModel boundary instead.
 nonisolated struct InMemoryAuthSignUpClient: AuthSignUpClientProtocol {
-    func signUp(email: String, password: String) async throws(AuthSignUpError) {
+    func signUp(email: String, password: String, displayName: String)
+        async throws(AuthSignUpError)
+    {
         // no-op
     }
 }
