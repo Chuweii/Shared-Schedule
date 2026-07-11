@@ -12,6 +12,7 @@ nonisolated struct AppDependencies: Sendable {
     /// real Supabase adapter; the default keeps previews working
     /// without touching the authenticated-branch call sites.
     var authSessionClient: any AuthSessionClientProtocol = InMemoryAuthSessionClient()
+    var authPasswordResetClient: any AuthPasswordResetClientProtocol = InMemoryAuthPasswordResetClient()
 
     var createScheduleUseCase: any CreateScheduleUseCaseProtocol {
         CreateScheduleUseCase(repository: repository, currentUserProvider: currentUserProvider)
@@ -92,6 +93,18 @@ nonisolated struct AppDependencies: Sendable {
 
     var resendVerificationCodeUseCase: any ResendVerificationCodeUseCaseProtocol {
         ResendVerificationCodeUseCase(authSessionClient: authSessionClient)
+    }
+
+    var requestPasswordResetUseCase: any RequestPasswordResetUseCaseProtocol {
+        RequestPasswordResetUseCase(authPasswordResetClient: authPasswordResetClient)
+    }
+
+    var verifyRecoveryOTPUseCase: any VerifyRecoveryOTPUseCaseProtocol {
+        VerifyRecoveryOTPUseCase(authPasswordResetClient: authPasswordResetClient)
+    }
+
+    var updatePasswordUseCase: any UpdatePasswordUseCaseProtocol {
+        UpdatePasswordUseCase(authPasswordResetClient: authPasswordResetClient)
     }
 
     var updateDisplayNameUseCase: any UpdateDisplayNameUseCaseProtocol {

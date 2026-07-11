@@ -1274,4 +1274,82 @@ struct SupabaseIntegrationTests {
             #expect(ids.count == 2)
         }
     }
+
+    // MARK: - Password reset (Slice D — recovery OTP flow)
+
+    @Suite(.serialized) struct PasswordReset {
+
+        /// Fresh confirmed user (1 confirmation email in the mailbox),
+        /// signed out, with a recovery email requested — returns the
+        /// recovery OTP. Waits out `max_frequency = "1s"` between the
+        /// confirmation and recovery sends.
+        private static func requestRecoveryForFreshUser(
+            prefix: String
+        ) async throws -> (email: String, otp: String) {
+            let (email, _) = try await IntegrationTestSupport.signUpFreshUserConfirmed(prefix: prefix)
+            await IntegrationTestSupport.signOut()
+            try await Task.sleep(for: .seconds(1.5))
+            let client = SupabaseAuthPasswordResetClient()
+            try await client.requestPasswordReset(email: email)
+            // Mailbox: [confirmation]; wait for the recovery mail to
+            // land, then take the newest (index 0 = recovery).
+            _ = try await MailpitClient.waitForMessageIDs(to: email, atLeast: 2)
+            let otp = try await MailpitClient.waitForLatestOTP(to: email)
+            return (email, otp)
+        }
+
+        @Test("DINT1. 重設後新密碼可登入、舊密碼失敗（happy path）")
+        func fullResetFlow_newPasswordWorks_oldPasswordFails() async throws {
+            // Given
+            let (email, otp) = try await Self.requestRecoveryForFreshUser(prefix: "dint1")
+            let client = SupabaseAuthPasswordResetClient()
+
+            // When: verify OTP (yields session) then set the new password
+            try await client.verifyRecoveryOTP(email: email, token: otp)
+            try await client.updatePassword("newpassword456")
+
+            // Then: new password signs in; the old one is rejected
+            await IntegrationTestSupport.signOut()
+            let session = try await SupabaseClientProvider.auth.signIn(
+                email: email,
+                password: "newpassword456"
+            )
+            #expect(session.user.email == email)
+
+            try? await SupabaseClientProvider.auth.signOut()
+            let sessionClient = SupabaseAuthSessionClient()
+            await #expect(throws: AuthSignInError.invalidCredentials) {
+                try await sessionClient.signIn(
+                    email: email,
+                    password: IntegrationTestSupport.testPassword
+                )
+            }
+        }
+
+        @Test("DINT2. 錯誤 recovery 碼 → .invalidOrExpiredCode")
+        func verifyWithWrongRecoveryCode_throwsInvalidOrExpiredCode() async throws {
+            // Given
+            let (email, otp) = try await Self.requestRecoveryForFreshUser(prefix: "dint2")
+            let wrongCode = otp == "000000" ? "000001" : "000000"
+            let client = SupabaseAuthPasswordResetClient()
+
+            // When / Then
+            await #expect(throws: VerifyOTPClientError.invalidOrExpiredCode) {
+                try await client.verifyRecoveryOTP(email: email, token: wrongCode)
+            }
+        }
+
+        @Test("DINT3. 新密碼與舊密碼相同 → .samePassword（釘住 422 映射）")
+        func updateToSamePassword_throwsSamePassword() async throws {
+            // Given: recovery session established
+            let (email, otp) = try await Self.requestRecoveryForFreshUser(prefix: "dint3")
+            let client = SupabaseAuthPasswordResetClient()
+            try await client.verifyRecoveryOTP(email: email, token: otp)
+
+            // When / Then
+            await #expect(throws: UpdatePasswordClientError.samePassword) {
+                try await client.updatePassword(IntegrationTestSupport.testPassword)
+            }
+        }
+    }
 }

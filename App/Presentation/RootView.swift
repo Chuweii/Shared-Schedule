@@ -6,10 +6,12 @@ private let log = Logger(subsystem: "com.Kyoi.Shared-Schedule", category: "Auth"
 
 struct RootView: View {
     @State private var authState: AuthState = .loading
+    @State private var isPasswordResetPresented = false
     private let userProfileRepository: SupabaseUserProfileRepository
     private let accountRepository: SupabaseAccountRepository
     private let authSignUpClient: SupabaseAuthSignUpClient
     private let authSessionClient: SupabaseAuthSessionClient
+    private let authPasswordResetClient: SupabaseAuthPasswordResetClient
     @State private var userProvider: SupabaseAuthCurrentUserProvider
 
     init() {
@@ -18,6 +20,7 @@ struct RootView: View {
         self.accountRepository = SupabaseAccountRepository()
         self.authSignUpClient = SupabaseAuthSignUpClient()
         self.authSessionClient = SupabaseAuthSessionClient()
+        self.authPasswordResetClient = SupabaseAuthPasswordResetClient()
         self._userProvider = State(
             initialValue: SupabaseAuthCurrentUserProvider(userProfileRepository: repo)
         )
@@ -55,12 +58,33 @@ struct RootView: View {
                     resendVerificationCodeUseCase: ResendVerificationCodeUseCase(
                         authSessionClient: authSessionClient
                     ),
-                    currentUserProvider: userProvider
+                    currentUserProvider: userProvider,
+                    onForgotPassword: { isPasswordResetPresented = true }
                 )
             }
         }
         .task {
             await observeAuthState()
+        }
+        // Attached to the outer Group, NOT LoginView: step 2's
+        // verifyOTP(.recovery) fires .signedIn and flips authState —
+        // the reset flow must survive that flip until step 3 finishes.
+        .fullScreenCover(isPresented: $isPasswordResetPresented) {
+            ForgotPasswordView(
+                viewModel: ForgotPasswordViewModel(
+                    requestPasswordResetUseCase: RequestPasswordResetUseCase(
+                        authPasswordResetClient: authPasswordResetClient
+                    ),
+                    verifyRecoveryOTPUseCase: VerifyRecoveryOTPUseCase(
+                        authPasswordResetClient: authPasswordResetClient
+                    ),
+                    updatePasswordUseCase: UpdatePasswordUseCase(
+                        authPasswordResetClient: authPasswordResetClient
+                    ),
+                    onComplete: { isPasswordResetPresented = false }
+                ),
+                onCancel: { isPasswordResetPresented = false }
+            )
         }
     }
 

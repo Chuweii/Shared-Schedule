@@ -8,13 +8,15 @@ struct LoginView: View {
     private let verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)?
     private let resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)?
     private let currentUserProvider: (any CurrentUserProviderProtocol)?
+    private let onForgotPassword: (() -> Void)?
 
     init(
         signInUseCase: (any SignInUseCaseProtocol)? = nil,
         completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil,
         verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)? = nil,
         resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)? = nil,
-        currentUserProvider: (any CurrentUserProviderProtocol)? = nil
+        currentUserProvider: (any CurrentUserProviderProtocol)? = nil,
+        onForgotPassword: (() -> Void)? = nil
     ) {
         self._viewModel = State(initialValue: LoginViewModel(
             signInUseCase: signInUseCase,
@@ -24,6 +26,7 @@ struct LoginView: View {
         self.verifyEmailOTPUseCase = verifyEmailOTPUseCase
         self.resendVerificationCodeUseCase = resendVerificationCodeUseCase
         self.currentUserProvider = currentUserProvider
+        self.onForgotPassword = onForgotPassword
     }
 
     var body: some View {
@@ -33,6 +36,15 @@ struct LoginView: View {
             headerSection
 
             inputFields
+
+            if !isSignUpMode, let onForgotPassword {
+                Button(action: onForgotPassword) {
+                    Text("forgotPasswordLink")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.system)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
 
             if let error = viewModel.error {
                 Text(errorMessage(for: error))
