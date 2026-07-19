@@ -20,24 +20,30 @@ struct ForgotPasswordView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            headerSection
+            if viewModel.step == .done {
+                successSection
 
-            stepFields
+                startButton
+            } else {
+                headerSection
 
-            if let error = viewModel.error {
-                Text(errorMessage(for: error))
-                    .font(.caption)
-                    .foregroundStyle(theme.error)
-                    .multilineTextAlignment(.center)
+                stepFields
+
+                if let error = viewModel.error {
+                    Text(errorMessage(for: error))
+                        .font(.caption)
+                        .foregroundStyle(theme.error)
+                        .multilineTextAlignment(.center)
+                }
+
+                actionButton
+
+                if viewModel.step == .enterCode {
+                    resendButton
+                }
+
+                cancelButton
             }
-
-            actionButton
-
-            if viewModel.step == .enterCode {
-                resendButton
-            }
-
-            cancelButton
 
             Spacer()
         }
@@ -141,6 +147,35 @@ struct ForgotPasswordView: View {
                 .font(.subheadline)
                 .foregroundStyle(theme.system)
         }
+    }
+
+    private var successSection: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(theme.system)
+            Text("resetSuccessTitle")
+                .font(.title.bold())
+                .foregroundStyle(theme.textPrimary)
+            Text("resetSuccessMessage")
+                .font(.subheadline)
+                .foregroundStyle(theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var startButton: some View {
+        Button {
+            viewModel.finish()
+        } label: {
+            Text("resetButtonStart")
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding()
+        }
+        .background(theme.buttonBgPrimary)
+        .foregroundStyle(theme.buttonTextPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Localization keys

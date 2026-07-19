@@ -118,15 +118,20 @@ LoginView sign-up mode 三欄填完按「註冊」
     → authSignUpClient.signUp(email, password, displayName→metadata)
       → 成功（無 session）→ GoTrue 寄驗證信
   → LoginViewModel.pendingVerification = (email, displayName)
-  → 呈現 EmailVerificationView
+  → LoginView 以 onChange 將值交給 RootView（handoff 後清回 nil）
+  → RootView 以 fullScreenCover 呈現 EmailVerificationView
+    （cover 掛在 auth-state Group 外層、同忘記密碼模式——成功畫面
+    要活過 .signedIn 造成的 LoginView 子樹拆除；2026-07-19 UX 修訂）
     → 輸入 6 碼按「驗證」
     → VerifyEmailOTPUseCase.verify(email, code, displayName)
       → 格式檢查 ^[0-9]{6}$
       → authSessionClient.verifySignUpOTP(email, token)
         → 成功 → session 成立、.signedIn 發出
       → userProfileRepository.create(displayName)（best-effort）
-    → viewModel 呼叫 updateCachedDisplayName(displayName)
-  → RootView 收到 .signedIn → 切 ContentView（LoginView 子樹自動拆除）
+    → viewModel 呼叫 updateCachedDisplayName(displayName)、isVerified = true
+  → RootView 背後切 ContentView；cover 顯示成功畫面
+    （checkmark＋「驗證成功」＋「開始使用」）
+  → 按「開始使用」→ cover dismiss → 使用者已在 ContentView
 ```
 
 ### 未驗證登入 → 補驗證

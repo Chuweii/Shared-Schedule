@@ -23,6 +23,9 @@ final class EmailVerificationViewModel {
     var code = ""
     var isLoading = false
     var error: VerificationError?
+    /// Flips the view to the success screen; RootView has already
+    /// swapped to the authenticated branch underneath the cover.
+    var isVerified = false
     /// Client-side resend cooldown; `resend()` is a no-op while > 0.
     var resendSecondsRemaining = 0
 
@@ -59,12 +62,15 @@ final class EmailVerificationViewModel {
                 code: trimmedCode,
                 displayName: displayName
             )
-            // Success: `.signedIn` has fired and RootView tears this
-            // screen down. Patch the cached user's name so the first
-            // authenticated session doesn't race the profile insert.
+            // Success: `.signedIn` has fired and RootView swaps to the
+            // authenticated branch underneath this cover. Patch the
+            // cached user's name so the first authenticated session
+            // doesn't race the profile insert, then flip to the
+            // success screen.
             if let displayName {
                 currentUserProvider.updateCachedDisplayName(displayName)
             }
+            isVerified = true
         } catch {
             self.error = Self.describe(error)
         }

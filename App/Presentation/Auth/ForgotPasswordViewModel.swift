@@ -98,12 +98,19 @@ final class ForgotPasswordViewModel {
         error = nil
         do {
             try await updatePasswordUseCase.update(newPassword: newPassword)
+            // Stay on the .done success screen — `finish()` (the
+            // 開始使用 button) completes the flow.
             step = .done
-            onComplete()
         } catch {
             self.error = Self.describeUpdate(error)
         }
         isLoading = false
+    }
+
+    /// The success screen's 開始使用 button — dismisses the flow into
+    /// the (already signed-in) app.
+    func finish() {
+        onComplete()
     }
 
     /// Same request as `sendCode` but stays on the code step — used by

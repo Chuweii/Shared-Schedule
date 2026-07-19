@@ -83,7 +83,10 @@ LoginView（sign-in mode）密碼欄下「忘記密碼？」
   → Step 3 newPassword：輸入新密碼按「更新密碼」
     → UpdatePasswordUseCase.update(newPassword)
       → auth.update(user:)
-    → onComplete → cover dismiss → 使用者已在 ContentView
+    → step = .done：成功畫面（checkmark＋「密碼已更新」＋「開始使用」）
+      （2026-07-19 UX 修訂：不再立即 dismiss）
+  → 按「開始使用」→ finish() → onComplete → cover dismiss
+    → 使用者已在 ContentView
 ```
 
 ## Scenario 總表

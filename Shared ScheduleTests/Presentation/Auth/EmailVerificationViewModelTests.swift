@@ -45,6 +45,7 @@ struct EmailVerificationViewModelTests {
         #expect(fakeVerify.lastCode == "123456")
         #expect(fakeVerify.lastDisplayName == "小明")
         #expect(fakeProvider.currentUser.displayName == "小明")
+        #expect(vm.isVerified == true)
     }
 
     @MainActor
@@ -90,6 +91,7 @@ struct EmailVerificationViewModelTests {
 
         // Then
         #expect(vm.error == .invalidOrExpiredCode)
+        #expect(vm.isVerified == false)
     }
 
     @MainActor

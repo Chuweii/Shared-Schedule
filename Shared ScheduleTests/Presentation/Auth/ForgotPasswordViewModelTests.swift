@@ -135,8 +135,8 @@ struct ForgotPasswordViewModelTests {
     }
 
     @MainActor
-    @Test("FVM7. submitNewPassword 有效 + fake 成功 → step .done、onComplete 呼叫 1 次")
-    func submitNewPassword_success_completesFlow() async {
+    @Test("FVM7. submitNewPassword 有效 + fake 成功 → step .done（成功畫面）、onComplete 未呼叫")
+    func submitNewPassword_success_showsDoneWithoutCompleting() async {
         // Given
         let (vm, _, _, fakeUpdate, completion) = makeSUT()
         vm.step = .newPassword
@@ -145,11 +145,11 @@ struct ForgotPasswordViewModelTests {
         // When
         await vm.submitNewPassword()
 
-        // Then
+        // Then — stays on the success screen until the user taps 開始使用
         #expect(vm.step == .done)
         #expect(vm.error == nil)
         #expect(fakeUpdate.callCount == 1)
-        #expect(completion.count == 1)
+        #expect(completion.count == 0)
     }
 
     @MainActor
@@ -195,5 +195,19 @@ struct ForgotPasswordViewModelTests {
         #expect(fakeRequest.callCount == 1)
         #expect(vm.resendSecondsRemaining == 60)
         #expect(vm.step == .enterCode)
+    }
+
+    @MainActor
+    @Test("FVM10. step .done 時 finish() → onComplete 呼叫 1 次")
+    func finish_onDoneStep_callsOnComplete() {
+        // Given
+        let (vm, _, _, _, completion) = makeSUT()
+        vm.step = .done
+
+        // When
+        vm.finish()
+
+        // Then
+        #expect(completion.count == 1)
     }
 }

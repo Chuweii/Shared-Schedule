@@ -1,39 +1,46 @@
 import SwiftUI
 
 /// OTP entry screen shown after sign-up (or from the sign-in
-/// "email not confirmed" path). On successful verification the SDK
-/// emits `.signedIn` and RootView swaps to ContentView — this view
-/// never dismisses itself on success.
+/// "email not confirmed" path). Presented as a RootView-level cover:
+/// on successful verification the SDK emits `.signedIn` and RootView
+/// swaps to ContentView *underneath*, while this cover flips to the
+/// success screen — the 開始使用 button then dismisses into the app.
 struct EmailVerificationView: View {
     @Environment(\.theme) private var theme
     @State private var viewModel: EmailVerificationViewModel
-    private let onBack: () -> Void
+    private let onDismiss: () -> Void
 
-    init(viewModel: EmailVerificationViewModel, onBack: @escaping () -> Void) {
+    init(viewModel: EmailVerificationViewModel, onDismiss: @escaping () -> Void) {
         self._viewModel = State(initialValue: viewModel)
-        self.onBack = onBack
+        self.onDismiss = onDismiss
     }
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            headerSection
+            if viewModel.isVerified {
+                successSection
 
-            codeField
+                startButton
+            } else {
+                headerSection
 
-            if let error = viewModel.error {
-                Text(errorMessage(for: error))
-                    .font(.caption)
-                    .foregroundStyle(theme.error)
-                    .multilineTextAlignment(.center)
+                codeField
+
+                if let error = viewModel.error {
+                    Text(errorMessage(for: error))
+                        .font(.caption)
+                        .foregroundStyle(theme.error)
+                        .multilineTextAlignment(.center)
+                }
+
+                verifyButton
+
+                resendButton
+
+                backButton
             }
-
-            verifyButton
-
-            resendButton
-
-            backButton
 
             Spacer()
         }
@@ -108,11 +115,38 @@ struct EmailVerificationView: View {
     }
 
     private var backButton: some View {
-        Button(action: onBack) {
+        Button(action: onDismiss) {
             Text("verificationBackToLogin")
                 .font(.subheadline)
                 .foregroundStyle(theme.system)
         }
+    }
+
+    private var successSection: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(theme.system)
+            Text("verificationSuccessTitle")
+                .font(.title.bold())
+                .foregroundStyle(theme.textPrimary)
+            Text("verificationSuccessMessage")
+                .font(.subheadline)
+                .foregroundStyle(theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var startButton: some View {
+        Button(action: onDismiss) {
+            Text("verificationButtonStart")
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding()
+        }
+        .background(theme.buttonBgPrimary)
+        .foregroundStyle(theme.buttonTextPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Localization keys
@@ -146,6 +180,6 @@ struct EmailVerificationView: View {
             resendVerificationCodeUseCase: AppDependencies.live.resendVerificationCodeUseCase,
             currentUserProvider: AppDependencies.live.currentUserProvider
         ),
-        onBack: {}
+        onDismiss: {}
     )
 }

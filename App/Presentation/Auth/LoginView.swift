@@ -5,28 +5,23 @@ struct LoginView: View {
     @State private var viewModel: LoginViewModel
     @State private var isSignUpMode = false
 
-    private let verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)?
-    private let resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)?
-    private let currentUserProvider: (any CurrentUserProviderProtocol)?
     private let onForgotPassword: (() -> Void)?
+    private let onVerificationNeeded: ((LoginViewModel.PendingVerification) -> Void)?
 
     init(
         signInUseCase: (any SignInUseCaseProtocol)? = nil,
         completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil,
-        verifyEmailOTPUseCase: (any VerifyEmailOTPUseCaseProtocol)? = nil,
         resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)? = nil,
-        currentUserProvider: (any CurrentUserProviderProtocol)? = nil,
-        onForgotPassword: (() -> Void)? = nil
+        onForgotPassword: (() -> Void)? = nil,
+        onVerificationNeeded: ((LoginViewModel.PendingVerification) -> Void)? = nil
     ) {
         self._viewModel = State(initialValue: LoginViewModel(
             signInUseCase: signInUseCase,
             completeSignUpUseCase: completeSignUpUseCase,
             resendVerificationCodeUseCase: resendVerificationCodeUseCase
         ))
-        self.verifyEmailOTPUseCase = verifyEmailOTPUseCase
-        self.resendVerificationCodeUseCase = resendVerificationCodeUseCase
-        self.currentUserProvider = currentUserProvider
         self.onForgotPassword = onForgotPassword
+        self.onVerificationNeeded = onVerificationNeeded
     }
 
     var body: some View {
@@ -65,8 +60,15 @@ struct LoginView: View {
         }
         .padding(.horizontal, 32)
         .background(theme.bgPrimary)
-        .fullScreenCover(item: $viewModel.pendingVerification) { pending in
-            verificationScreen(for: pending)
+        // The verification cover is presented by RootView (it must
+        // survive the .signedIn auth flip for the success screen);
+        // hand the pending value up and reset so a later sign-up can
+        // re-trigger the change.
+        .onChange(of: viewModel.pendingVerification) { _, newValue in
+            if let newValue {
+                onVerificationNeeded?(newValue)
+                viewModel.pendingVerification = nil
+            }
         }
     }
 
@@ -149,27 +151,6 @@ struct LoginView: View {
                 .foregroundStyle(theme.system)
         }
         .disabled(viewModel.isLoading)
-    }
-
-    /// The OTP screen never dismisses itself on success — `.signedIn`
-    /// flips RootView to the authenticated branch, tearing down this
-    /// whole subtree (cover included).
-    @ViewBuilder
-    private func verificationScreen(
-        for pending: LoginViewModel.PendingVerification
-    ) -> some View {
-        if let verifyEmailOTPUseCase, let resendVerificationCodeUseCase, let currentUserProvider {
-            EmailVerificationView(
-                viewModel: EmailVerificationViewModel(
-                    email: pending.email,
-                    displayName: pending.displayName,
-                    verifyEmailOTPUseCase: verifyEmailOTPUseCase,
-                    resendVerificationCodeUseCase: resendVerificationCodeUseCase,
-                    currentUserProvider: currentUserProvider
-                ),
-                onBack: { viewModel.pendingVerification = nil }
-            )
-        }
     }
 
     private var toggleModeButton: some View {

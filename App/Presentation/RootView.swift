@@ -7,6 +7,7 @@ private let log = Logger(subsystem: "com.Kyoi.Shared-Schedule", category: "Auth"
 struct RootView: View {
     @State private var authState: AuthState = .loading
     @State private var isPasswordResetPresented = false
+    @State private var pendingVerification: LoginViewModel.PendingVerification?
     private let userProfileRepository: SupabaseUserProfileRepository
     private let accountRepository: SupabaseAccountRepository
     private let authSignUpClient: SupabaseAuthSignUpClient
@@ -51,6 +52,27 @@ struct RootView: View {
                     completeSignUpUseCase: CompleteSignUpUseCase(
                         authSignUpClient: authSignUpClient
                     ),
+                    resendVerificationCodeUseCase: ResendVerificationCodeUseCase(
+                        authSessionClient: authSessionClient
+                    ),
+                    onForgotPassword: { isPasswordResetPresented = true },
+                    onVerificationNeeded: { pendingVerification = $0 }
+                )
+            }
+        }
+        .task {
+            await observeAuthState()
+        }
+        // Both covers attach to the outer Group, NOT LoginView: OTP
+        // verification and step 2 of the reset flow fire .signedIn and
+        // flip authState — the flows must survive that flip so their
+        // success screens can show before dismissing into the app.
+        // (They are never presented simultaneously.)
+        .fullScreenCover(item: $pendingVerification) { pending in
+            EmailVerificationView(
+                viewModel: EmailVerificationViewModel(
+                    email: pending.email,
+                    displayName: pending.displayName,
                     verifyEmailOTPUseCase: VerifyEmailOTPUseCase(
                         authSessionClient: authSessionClient,
                         userProfileRepository: userProfileRepository
@@ -58,17 +80,11 @@ struct RootView: View {
                     resendVerificationCodeUseCase: ResendVerificationCodeUseCase(
                         authSessionClient: authSessionClient
                     ),
-                    currentUserProvider: userProvider,
-                    onForgotPassword: { isPasswordResetPresented = true }
-                )
-            }
+                    currentUserProvider: userProvider
+                ),
+                onDismiss: { pendingVerification = nil }
+            )
         }
-        .task {
-            await observeAuthState()
-        }
-        // Attached to the outer Group, NOT LoginView: step 2's
-        // verifyOTP(.recovery) fires .signedIn and flips authState —
-        // the reset flow must survive that flip until step 3 finishes.
         .fullScreenCover(isPresented: $isPasswordResetPresented) {
             ForgotPasswordView(
                 viewModel: ForgotPasswordViewModel(
@@ -103,7 +119,7 @@ struct RootView: View {
             log.error("local session removal failed: \(error.localizedDescription, privacy: .public)")
         }
         userProvider.clear()
-        authState = .unauthenticated
+        setAuthState(.unauthenticated)
     }
 
     /// After a successful account deletion the server session is already
@@ -115,15 +131,22 @@ struct RootView: View {
         await signOut()
     }
 
+    /// Cross-fades the login-gate branch swap instead of hard-cutting.
+    private func setAuthState(_ newState: AuthState) {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            authState = newState
+        }
+    }
+
     private func observeAuthState() async {
         // Check initial session
         do {
             let session = try await SupabaseClientProvider.auth.session
             await userProvider.update(from: session.user)
-            authState = .authenticated
+            setAuthState(.authenticated)
         } catch {
             log.info("no active session: \(error.localizedDescription, privacy: .public)")
-            authState = .unauthenticated
+            setAuthState(.unauthenticated)
         }
 
         // Listen for ongoing auth state changes
@@ -133,10 +156,10 @@ struct RootView: View {
                 if let user = session?.user {
                     await userProvider.update(from: user)
                 }
-                authState = .authenticated
+                setAuthState(.authenticated)
             case .signedOut:
                 userProvider.clear()
-                authState = .unauthenticated
+                setAuthState(.unauthenticated)
             default:
                 break
             }

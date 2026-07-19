@@ -765,6 +765,28 @@
         }
       }
     },
+    "resetButtonStart": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get started"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はじめる"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始使用"
+          }
+        }
+      }
+    },
     "resetButtonUpdatePassword": {
       "localizations": {
         "en": {
@@ -1091,6 +1113,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 秒後可重新發送"
+          }
+        }
+      }
+    },
+    "resetSuccessMessage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use your new password from now on"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今後は新しいパスワードでログインしてください"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "之後請用新密碼登入"
+          }
+        }
+      }
+    },
+    "resetSuccessTitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password updated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パスワードを更新しました"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密碼已更新"
           }
         }
       }
@@ -1582,6 +1648,28 @@
         }
       }
     },
+    "verificationButtonStart": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get started"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はじめる"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始使用"
+          }
+        }
+      }
+    },
     "verificationButtonVerify": {
       "localizations": {
         "en": {
@@ -1754,6 +1842,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "驗證碼已寄到你的信箱"
+          }
+        }
+      }
+    },
+    "verificationSuccessMessage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome aboard — your account is ready"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ようこそ！アカウントの準備ができました"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歡迎加入！你的帳號已啟用"
+          }
+        }
+      }
+    },
+    "verificationSuccessTitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're verified!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認証が完了しました"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "驗證成功"
           }
         }
       }

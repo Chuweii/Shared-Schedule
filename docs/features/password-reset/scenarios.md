@@ -163,7 +163,8 @@ resendSecondsRemaining == 60
 **Given** step == .newPassword、newPassword = "newpassword456"，
 fakeUpdate 設成功
 **When** submitNewPassword()
-**Then** step == .done；error == nil；onComplete 被呼叫 1 次
+**Then** step == .done（成功畫面）；error == nil；onComplete **未被
+呼叫**（2026-07-19 UX 修訂：停在成功畫面等使用者按「開始使用」）
 
 ### FVM8
 **Given** fakeUpdate 拋 `.samePassword`
@@ -178,6 +179,11 @@ onComplete 未被呼叫
 sendCode 但不改 step，fakeRequest called 1 次並重啟冷卻——同測試
 內驗證兩段）
 
+### FVM10（2026-07-19 UX 修訂新增）
+**Given** step == .done（成功畫面）
+**When** finish()
+**Then** onComplete 被呼叫 1 次
+
 ## Test 數量（Slice D）
 
 | 層 | 數量 |
@@ -187,5 +193,5 @@ sendCode 但不改 step，fakeRequest called 1 次並重啟冷卻——同測試
 | Usecase UpdatePassword (UP) | 5 |
 | Infrastructure mapping (PM) | 4 |
 | Infrastructure 整合 (DINT) | 3 |
-| ViewModel ForgotPassword (FVM) | 9 |
-| **Slice D 合計** | **28** |
+| ViewModel ForgotPassword (FVM) | 10 |
+| **Slice D 合計** | **29** |

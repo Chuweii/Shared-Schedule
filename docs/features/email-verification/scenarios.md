@@ -224,7 +224,10 @@ displayName: nil)；error 清空
 **Given** code = "123456"、displayName = "小明"，fakeVerify 設成功
 **When** verify()
 **Then** error == nil；fakeVerify called 1 次；
-currentUserProvider.updateCachedDisplayName called 帶 "小明"
+currentUserProvider.updateCachedDisplayName called 帶 "小明"；
+isVerified == true（View 據此切換為成功畫面；「開始使用」按鈕為
+View 層接線 → RootView dismiss cover，無對應 VM test。2026-07-19
+UX 修訂）
 
 ### EVM2
 **Given** code = ""
@@ -239,7 +242,7 @@ currentUserProvider.updateCachedDisplayName called 帶 "小明"
 ### EVM4
 **Given** fakeVerify 拋 `.invalidOrExpiredCode`
 **When** verify()
-**Then** error == `.invalidOrExpiredCode`
+**Then** error == `.invalidOrExpiredCode`；isVerified == false
 
 ### EVM5
 **Given** fakeVerify 拋 `.rateLimited`
