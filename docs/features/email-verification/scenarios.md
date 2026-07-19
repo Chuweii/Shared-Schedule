@@ -215,6 +215,14 @@ called 1 次帶 trim 後的 "小明"
 **Then** fakeResend called 1 次；pendingVerification == (email,
 displayName: nil)；error 清空
 
+### LVM-C5（2026-07-19 二次 UX 修訂新增）
+**Given** email/password 有效，fakeSignIn 設成功
+**When** viewModel.signIn()
+**Then** didSignIn == true（LoginView 據此以 onChange 通知 RootView
+顯示「歡迎回來」toast（共用 `.toast()` modifier、自動消失）——呈現
+為 View 層接線，無對應 VM test；signIn 失敗時 didSignIn 維持
+false，見 LVM-C2 補充斷言）
+
 ## ViewModel — EmailVerificationViewModel（8）
 
 > Fakes：`FakeVerifyEmailOTPUseCase`、
@@ -275,6 +283,6 @@ timer 本身不測，見 testing.md「不用 Thread.sleep」）
 | Usecase CompleteSignUp 改寫 (UC') | 5（新寫 1、沿用 4、刪 2） |
 | Infrastructure mapping (SM) | 7 |
 | Infrastructure 整合 (CINT) | 4 |
-| ViewModel LoginViewModel (LVM-C) | 4 |
+| ViewModel LoginViewModel (LVM-C) | 5 |
 | ViewModel EmailVerification (EVM) | 8 |
-| **Slice C 合計** | **43** |
+| **Slice C 合計** | **44** |

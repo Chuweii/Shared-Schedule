@@ -7,13 +7,15 @@ struct LoginView: View {
 
     private let onForgotPassword: (() -> Void)?
     private let onVerificationNeeded: ((LoginViewModel.PendingVerification) -> Void)?
+    private let onSignInSuccess: (() -> Void)?
 
     init(
         signInUseCase: (any SignInUseCaseProtocol)? = nil,
         completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)? = nil,
         resendVerificationCodeUseCase: (any ResendVerificationCodeUseCaseProtocol)? = nil,
         onForgotPassword: (() -> Void)? = nil,
-        onVerificationNeeded: ((LoginViewModel.PendingVerification) -> Void)? = nil
+        onVerificationNeeded: ((LoginViewModel.PendingVerification) -> Void)? = nil,
+        onSignInSuccess: (() -> Void)? = nil
     ) {
         self._viewModel = State(initialValue: LoginViewModel(
             signInUseCase: signInUseCase,
@@ -22,6 +24,7 @@ struct LoginView: View {
         ))
         self.onForgotPassword = onForgotPassword
         self.onVerificationNeeded = onVerificationNeeded
+        self.onSignInSuccess = onSignInSuccess
     }
 
     var body: some View {
@@ -68,6 +71,14 @@ struct LoginView: View {
             if let newValue {
                 onVerificationNeeded?(newValue)
                 viewModel.pendingVerification = nil
+            }
+        }
+        // Interactive sign-in success → RootView shows the welcome-back
+        // overlay (no reset needed; this subtree is torn down by the
+        // auth flip right after).
+        .onChange(of: viewModel.didSignIn) { _, newValue in
+            if newValue {
+                onSignInSuccess?()
             }
         }
     }

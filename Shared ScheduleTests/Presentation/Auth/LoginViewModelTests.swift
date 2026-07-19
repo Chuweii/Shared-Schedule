@@ -58,6 +58,22 @@ struct LoginViewModelTests {
         // Then
         #expect(vm.error == .emailNotConfirmed)
         #expect(vm.pendingVerification == nil)
+        #expect(vm.didSignIn == false)
+    }
+
+    @MainActor
+    @Test("LVM-C5. signIn 成功 → didSignIn == true（View 據此顯示歡迎回來卡片）")
+    func signIn_success_setsDidSignIn() async {
+        // Given
+        let (vm, _, _, _) = makeSUT()
+        vm.email = "x@y.com"
+        vm.password = "password123"
+
+        // When
+        await vm.signIn()
+
+        // Then
+        #expect(vm.didSignIn == true)
     }
 
     @MainActor

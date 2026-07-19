@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var authState: AuthState = .loading
     @State private var isPasswordResetPresented = false
     @State private var pendingVerification: LoginViewModel.PendingVerification?
+    @State private var showsSignInSuccess = false
     private let userProfileRepository: SupabaseUserProfileRepository
     private let accountRepository: SupabaseAccountRepository
     private let authSignUpClient: SupabaseAuthSignUpClient
@@ -56,13 +57,22 @@ struct RootView: View {
                         authSessionClient: authSessionClient
                     ),
                     onForgotPassword: { isPasswordResetPresented = true },
-                    onVerificationNeeded: { pendingVerification = $0 }
+                    onVerificationNeeded: { pendingVerification = $0 },
+                    onSignInSuccess: { showsSignInSuccess = true }
                 )
             }
         }
         .task {
             await observeAuthState()
         }
+        // Welcome-back toast over ContentView after an interactive
+        // sign-in. The OTP flows and session restore never trigger
+        // this (they signal via their own paths).
+        .toast(
+            isPresented: $showsSignInSuccess,
+            message: "loginSuccessWelcomeBack",
+            duration: .seconds(1.5)
+        )
         // Both covers attach to the outer Group, NOT LoginView: OTP
         // verification and step 2 of the reset flow fire .signedIn and
         // flip authState — the flows must survive that flip so their

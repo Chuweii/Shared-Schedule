@@ -567,6 +567,28 @@
         }
       }
     },
+    "loginSuccessWelcomeBack": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome back"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おかえりなさい"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歡迎回來"
+          }
+        }
+      }
+    },
     "loginSwitchToSignIn": {
       "localizations": {
         "en": {

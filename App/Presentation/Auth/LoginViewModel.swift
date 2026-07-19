@@ -35,6 +35,10 @@ final class LoginViewModel {
     var isLoading = false
     var error: LoginError?
     var pendingVerification: PendingVerification?
+    /// Set on interactive sign-in success only — the View hands it up
+    /// so RootView shows the welcome-back overlay (session restore and
+    /// the OTP flows have their own feedback and must not trigger it).
+    var didSignIn = false
 
     private let signInUseCase: (any SignInUseCaseProtocol)?
     private let completeSignUpUseCase: (any CompleteSignUpUseCaseProtocol)?
@@ -60,6 +64,7 @@ final class LoginViewModel {
         error = nil
         do {
             try await signInUseCase.signIn(email: email, password: password)
+            didSignIn = true
         } catch {
             self.error = Self.describeSignIn(error)
         }

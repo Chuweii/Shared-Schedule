@@ -134,6 +134,17 @@ LoginView sign-up mode 三欄填完按「註冊」
   → 按「開始使用」→ cover dismiss → 使用者已在 ContentView
 ```
 
+### 一般登入成功（2026-07-19 二次 UX 修訂）
+
+```
+LoginView 登入成功 → LoginViewModel.didSignIn = true
+  → LoginView onChange 通知 RootView
+  → RootView 切 ContentView（crossfade）＋底部彈出
+    「歡迎回來」toast（共用 .toast() modifier、約 1.5 秒自動消失）
+  → 只有手動登入觸發；session 恢復／OTP 驗證／密碼重設不彈
+    （後兩者已有各自成功畫面）
+```
+
 ### 未驗證登入 → 補驗證
 
 ```
