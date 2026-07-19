@@ -7,7 +7,6 @@ struct InviteSheet: View {
     @State var viewModel: InviteSheetViewModel
     @State private var sensoryToken = 0
     @State private var showCopiedToast = false
-    @State private var copiedToastTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -21,21 +20,11 @@ struct InviteSheet: View {
                 }
                 .task { await viewModel.onAppear() }
                 .sensoryFeedback(.success, trigger: sensoryToken)
-                .overlay(alignment: .bottom) { copiedToast }
-        }
-    }
-
-    @ViewBuilder
-    private var copiedToast: some View {
-        if showCopiedToast {
-            Label("已複製到剪貼簿", systemImage: "checkmark.circle.fill")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(theme.buttonTextPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(theme.buttonBgPrimary, in: Capsule())
-                .padding(.bottom, 32)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .toast(
+                    isPresented: $showCopiedToast,
+                    message: "inviteToastCopied",
+                    duration: .seconds(1.5)
+                )
         }
     }
 
@@ -147,15 +136,7 @@ struct InviteSheet: View {
             Button {
                 UIPasteboard.general.string = invitation.token.rawValue
                 sensoryToken &+= 1
-                copiedToastTask?.cancel()
-                withAnimation(.easeInOut(duration: 0.2)) { showCopiedToast = true }
-                copiedToastTask = Task {
-                    try? await Task.sleep(for: .seconds(1.5))
-                    guard !Task.isCancelled else { return }
-                    await MainActor.run {
-                        withAnimation(.easeInOut(duration: 0.2)) { showCopiedToast = false }
-                    }
-                }
+                showCopiedToast = true
             } label: {
                 Text("複製")
                     .font(.subheadline.weight(.medium))

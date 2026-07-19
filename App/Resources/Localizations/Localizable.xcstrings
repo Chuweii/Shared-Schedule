@@ -127,6 +127,28 @@
         }
       }
     },
+    "inviteToastCopied": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied to clipboard"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリップボードにコピーしました"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已複製到剪貼簿"
+          }
+        }
+      }
+    },
     "languageOptionChineseTraditional": {
       "localizations": {
         "en": {
@@ -2225,22 +2247,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "予約済みです。別の時間帯を選んでください"
-          }
-        }
-      }
-    },
-    "已複製到剪貼簿": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copied to clipboard"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "クリップボードにコピーしました"
           }
         }
       }
