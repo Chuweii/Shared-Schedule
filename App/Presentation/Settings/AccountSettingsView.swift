@@ -15,6 +15,7 @@ struct AccountSettingsView: View {
             Text("settingsAccountSection")
                 .font(.headline)
                 .foregroundStyle(theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             displayNameField
             destructiveActions

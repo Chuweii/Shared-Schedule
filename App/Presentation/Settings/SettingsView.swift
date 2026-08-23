@@ -38,6 +38,7 @@ struct SettingsView: View {
                     Text("settingsAppearanceSection")
                         .font(.headline)
                         .foregroundStyle(theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     ThemeSettingsView()
                 }
 
@@ -47,6 +48,7 @@ struct SettingsView: View {
                     Text("settingsLanguageSection")
                         .font(.headline)
                         .foregroundStyle(theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     LanguageSettingsView()
                 }
             }

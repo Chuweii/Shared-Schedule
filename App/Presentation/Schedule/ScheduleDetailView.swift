@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScheduleDetailView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @State private var viewModel: ScheduleDetailViewModel
 
     init(schedule: Schedule, dependencies: AppDependencies) {
@@ -32,6 +33,7 @@ struct ScheduleDetailView: View {
                 Button { viewModel.isAddWindowSheetPresented = true } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(Text("a11yAddWindow"))
             }
         }
         .sheet(isPresented: $viewModel.isAddWindowSheetPresented) {
@@ -106,5 +108,18 @@ struct ScheduleDetailView: View {
                 .clipShape(Capsule())
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: windowAccessibilityLabel(window)))
+    }
+
+    private func windowAccessibilityLabel(_ window: AvailabilityWindow) -> String {
+        let bundle = Bundle.forLocale(locale)
+        let date = window.start.formatted(.dateTime.year().month().day().locale(locale))
+        let range = String(
+            localized: "a11ySlotTimeRange \(window.start.formatted(.dateTime.hour().minute().locale(locale))) \(window.end.formatted(.dateTime.hour().minute().locale(locale)))",
+            bundle: bundle
+        )
+        let duration = String(localized: "\(Int(window.duration / 60)) 分鐘", bundle: bundle)
+        return "\(date)，\(range)，\(duration)"
     }
 }

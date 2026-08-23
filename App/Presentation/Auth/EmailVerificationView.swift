@@ -7,6 +7,7 @@ import SwiftUI
 /// success screen — the 開始使用 button then dismisses into the app.
 struct EmailVerificationView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @State private var viewModel: EmailVerificationViewModel
     private let onDismiss: () -> Void
 
@@ -46,6 +47,13 @@ struct EmailVerificationView: View {
         }
         .padding(.horizontal, 32)
         .background(theme.bgPrimary)
+        // The success screen is a silent layout swap — tell VoiceOver.
+        .onChange(of: viewModel.isVerified) { _, isVerified in
+            guard isVerified else { return }
+            AccessibilityNotification.Announcement(
+                String(localized: "verificationSuccessTitle", bundle: .forLocale(locale))
+            ).post()
+        }
     }
 
     // MARK: - Subviews
@@ -55,6 +63,7 @@ struct EmailVerificationView: View {
             Image(systemName: "envelope.badge.shield.half.filled")
                 .font(.system(size: 48))
                 .foregroundStyle(theme.system)
+                .accessibilityHidden(true)
             Text("verificationTitle")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
@@ -65,6 +74,8 @@ struct EmailVerificationView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(theme.textSecondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private var codeField: some View {
@@ -76,6 +87,8 @@ struct EmailVerificationView: View {
             .padding()
             .background(theme.textFieldBgPrimary)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+            // Placeholder vanishes once digits are typed; keep a label.
+            .accessibilityLabel(Text("verificationCodePlaceholder"))
     }
 
     private var verifyButton: some View {
@@ -86,6 +99,7 @@ struct EmailVerificationView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
+                    .accessibilityLabel(Text("a11yLoading"))
             } else {
                 Text("verificationButtonVerify")
                     .fontWeight(.semibold)
@@ -127,6 +141,7 @@ struct EmailVerificationView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(theme.system)
+                .accessibilityHidden(true)
             Text("verificationSuccessTitle")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
@@ -135,6 +150,7 @@ struct EmailVerificationView: View {
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var startButton: some View {

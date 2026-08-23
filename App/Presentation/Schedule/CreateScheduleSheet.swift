@@ -79,6 +79,8 @@ struct CreateScheduleSheet: View {
             }
         }
         .frame(maxWidth: .infinity)
+        // Fixed 42pt chips clip at accessibility sizes; cap the row.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     private func weekdayChip(_ weekday: Weekday) -> some View {
@@ -104,6 +106,10 @@ struct CreateScheduleSheet: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        // Selection is otherwise color-only; the full weekday name
+        // replaces the ambiguous short symbol.
+        .accessibilityLabel(Text(verbatim: calendar.weekdaySymbols[weekday.rawValue - 1]))
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private var orderedWeekdays: [Weekday] {

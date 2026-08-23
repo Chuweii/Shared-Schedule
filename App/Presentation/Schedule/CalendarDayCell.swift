@@ -34,7 +34,7 @@ struct CalendarDayCell: View {
                 }
             }
         }
-        .frame(height: 44)
+        .frame(minHeight: 44)
     }
 
     private var textColor: Color {

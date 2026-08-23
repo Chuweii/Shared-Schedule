@@ -45,6 +45,7 @@ struct InviteSheet: View {
         } label: {
             HStack {
                 Image(systemName: "plus")
+                    .accessibilityHidden(true)
                 Text("產生新邀請碼")
             }
             .font(.body.weight(.semibold))
@@ -124,9 +125,12 @@ struct InviteSheet: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(invitation.token.rawValue)
-                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    .font(.title3.weight(.semibold).monospaced())
                     .foregroundStyle(theme.textPrimary)
                     .textSelection(.enabled)
+                    // Invite codes are random characters — spell them
+                    // out instead of letting VoiceOver guess at words.
+                    .speechSpellsOutCharacters()
 
                 Text("\(invitation.expiresAt, format: .dateTime.year().month().day()) 失效")
                     .font(.footnote)

@@ -160,12 +160,14 @@ struct ScheduleCalendarView: View {
                 Image(systemName: "chevron.left")
                     .font(.title3.weight(.medium))
             }
+            .accessibilityLabel(Text("a11yPreviousMonth"))
 
             Spacer()
 
             Text(viewModel.currentMonth, format: .dateTime.year().month(.wide))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
@@ -173,6 +175,7 @@ struct ScheduleCalendarView: View {
                 Image(systemName: "chevron.right")
                     .font(.title3.weight(.medium))
             }
+            .accessibilityLabel(Text("a11yNextMonth"))
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)

@@ -8,6 +8,7 @@ import SwiftUI
 /// behavior — they proved mailbox ownership).
 struct ForgotPasswordView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @State private var viewModel: ForgotPasswordViewModel
     private let onCancel: () -> Void
 
@@ -49,6 +50,19 @@ struct ForgotPasswordView: View {
         }
         .padding(.horizontal, 32)
         .background(theme.bgPrimary)
+        // Step swaps replace the fields silently — narrate each step's
+        // instruction (or the success title on .done) for VoiceOver.
+        .onChange(of: viewModel.step) { _, step in
+            let key: String.LocalizationValue = switch step {
+            case .enterEmail: "resetEmailInstruction"
+            case .enterCode: "resetCodeInstruction"
+            case .newPassword: "resetNewPasswordInstruction"
+            case .done: "resetSuccessTitle"
+            }
+            AccessibilityNotification.Announcement(
+                String(localized: key, bundle: .forLocale(locale))
+            ).post()
+        }
     }
 
     // MARK: - Subviews
@@ -58,6 +72,7 @@ struct ForgotPasswordView: View {
             Image(systemName: "key.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(theme.system)
+                .accessibilityHidden(true)
             Text("resetTitle")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
@@ -66,6 +81,8 @@ struct ForgotPasswordView: View {
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder
@@ -89,6 +106,7 @@ struct ForgotPasswordView: View {
                 .padding()
                 .background(theme.textFieldBgPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .accessibilityLabel(Text("verificationCodePlaceholder"))
         case .newPassword, .done:
             SecureField("resetNewPasswordPlaceholder", text: $viewModel.newPassword)
                 .textContentType(.newPassword)
@@ -113,6 +131,7 @@ struct ForgotPasswordView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
+                    .accessibilityLabel(Text("a11yLoading"))
             } else {
                 Text(actionButtonKey)
                     .fontWeight(.semibold)
@@ -154,6 +173,7 @@ struct ForgotPasswordView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(theme.system)
+                .accessibilityHidden(true)
             Text("resetSuccessTitle")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
@@ -162,6 +182,7 @@ struct ForgotPasswordView: View {
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var startButton: some View {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DaySlotListView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     let date: Date
     let presentedSlots: [PresentedSlot]
     /// When false, rows render but tap callbacks (book / cancel) are
@@ -31,6 +32,7 @@ struct DaySlotListView: View {
         HStack {
             Image(systemName: "calendar.badge.minus")
                 .foregroundStyle(theme.textCaption)
+                .accessibilityHidden(true)
             Text("當天沒有可預約時段")
                 .font(.subheadline)
                 .foregroundStyle(theme.textCaption)
@@ -79,6 +81,9 @@ struct DaySlotListView: View {
         }
         .buttonStyle(.plain)
         .disabled(!interactive)
+        // Replaces the child readout so "—" never narrates as "dash".
+        .accessibilityLabel(Text(verbatim: slotTimeString(slot)))
+        .accessibilityValue(Text("\(Int(slot.end.timeIntervalSince(slot.start) / 60)) 分鐘"))
     }
 
     private func bookedRow(_ slot: ComputedSlot, bookingID: BookingID) -> some View {
@@ -91,6 +96,12 @@ struct DaySlotListView: View {
                     .font(.caption)
                     .foregroundStyle(theme.textCaption)
             }
+            // Cancel stays a sibling element so combining the info part
+            // can't swallow the action.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(verbatim:
+                "\(slotTimeString(slot))，\(String(localized: "已預約", bundle: .forLocale(locale)))"
+            ))
             Spacer()
             if interactive {
                 Button {
@@ -126,6 +137,8 @@ struct DaySlotListView: View {
         .padding(.vertical, 10)
         .background(theme.bgSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: "\(slotTimeString(slot))，\(label)"))
     }
 
     private func bookedByOtherRow(_ slot: ComputedSlot) -> some View {
@@ -138,9 +151,23 @@ struct DaySlotListView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        // Muted look comes from the dimmed background only — a whole-row
+        // opacity stacked on textCaption fell below WCAG AA everywhere.
         .background(theme.bgSecondary.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .opacity(0.6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim:
+            "\(slotTimeString(slot))，\(String(localized: "已被預約", bundle: .forLocale(locale)))"
+        ))
+    }
+
+    /// "09:00 到 10:00" — the visual "—" separator narrates as "dash",
+    /// so accessibility labels swap it for a spoken connective.
+    private func slotTimeString(_ slot: ComputedSlot) -> String {
+        String(
+            localized: "a11ySlotTimeRange \(Self.timeFormatter.string(from: slot.start)) \(Self.timeFormatter.string(from: slot.end))",
+            bundle: .forLocale(locale)
+        )
     }
 
     private func timeRange(_ slot: ComputedSlot) -> some View {

@@ -49,6 +49,7 @@ struct ScheduleListView: View {
                 Button { showSettings = true } label: {
                     Image(systemName: "gearshape")
                 }
+                .accessibilityLabel(Text("a11yOpenSettings"))
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -65,6 +66,7 @@ struct ScheduleListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(Text("a11yAddOrJoinSchedule"))
             }
         }
         .sheet(isPresented: $viewModel.isCreateSheetPresented) {

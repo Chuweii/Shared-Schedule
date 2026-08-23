@@ -50,6 +50,7 @@ struct ThemeSettingsView: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .foregroundStyle(theme.system)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, 16)
@@ -62,6 +63,7 @@ struct ThemeSettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     // MARK: - Preview Section
@@ -76,6 +78,8 @@ struct ThemeSettingsView: View {
             buttonSample
             statusSample
         }
+        // Illustrative swatches only — nothing here is operable.
+        .accessibilityHidden(true)
     }
 
     private var textSample: some View {

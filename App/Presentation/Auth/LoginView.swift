@@ -90,6 +90,7 @@ struct LoginView: View {
             Image(systemName: "calendar.badge.clock")
                 .font(.system(size: 48))
                 .foregroundStyle(theme.system)
+                .accessibilityHidden(true)
             Text("Shared Schedule")
                 .font(.title.bold())
                 .foregroundStyle(theme.textPrimary)
@@ -97,6 +98,8 @@ struct LoginView: View {
                 .font(.subheadline)
                 .foregroundStyle(theme.textSecondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private var inputFields: some View {
@@ -140,6 +143,7 @@ struct LoginView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding()
+                    .accessibilityLabel(Text("a11yLoading"))
             } else {
                 Text(actionButtonKey)
                     .fontWeight(.semibold)

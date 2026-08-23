@@ -3,6 +3,7 @@ import SwiftUI
 struct RedeemInvitationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
+    @Environment(\.locale) private var locale
     @State var viewModel: RedeemInvitationViewModel
     @State private var sensoryToken = 0
     @FocusState private var inputFocused: Bool
@@ -50,7 +51,7 @@ struct RedeemInvitationSheet: View {
             .textInputAutocapitalization(.characters)
             .autocorrectionDisabled()
             .keyboardType(.asciiCapable)
-            .font(.system(size: 32, weight: .semibold, design: .monospaced))
+            .font(.title.weight(.semibold).monospaced())
             .multilineTextAlignment(.center)
             .padding(.vertical, 16)
             .padding(.horizontal, 24)
@@ -58,6 +59,8 @@ struct RedeemInvitationSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal)
             .focused($inputFocused)
+            // Empty-title field: the prompt is the only visible name.
+            .accessibilityLabel(Text("邀請碼"))
 
             Text("邀請碼共 8 個英數字元")
                 .font(.footnote)
@@ -88,6 +91,7 @@ struct RedeemInvitationSheet: View {
                 if viewModel.isSubmitting {
                     ProgressView()
                         .tint(theme.buttonTextPrimary)
+                        .accessibilityLabel(Text("a11yLoading"))
                 } else {
                     Text("加入")
                         .font(.body.weight(.semibold))
@@ -112,6 +116,7 @@ struct RedeemInvitationSheet: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 72))
                 .foregroundStyle(theme.success)
+                .accessibilityHidden(true)
 
             Text("已加入「\(success.schedule.title)」")
                 .font(.title2.weight(.semibold))
@@ -136,6 +141,16 @@ struct RedeemInvitationSheet: View {
             .padding(.horizontal)
             .padding(.bottom, 24)
         }
-        .onAppear { sensoryToken &+= 1 }
+        .onAppear {
+            sensoryToken &+= 1
+            // Success replaces the whole sheet content — narrate it in
+            // step with the haptic.
+            AccessibilityNotification.Announcement(
+                String(
+                    localized: "已加入「\(success.schedule.title)」",
+                    bundle: .forLocale(locale)
+                )
+            ).post()
+        }
     }
 }

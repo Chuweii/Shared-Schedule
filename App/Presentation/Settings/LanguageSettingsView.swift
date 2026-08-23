@@ -27,6 +27,7 @@ struct LanguageSettingsView: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .foregroundStyle(theme.system)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, 16)
@@ -39,6 +40,7 @@ struct LanguageSettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private func displayName(for option: LanguageOption) -> LocalizedStringKey {
