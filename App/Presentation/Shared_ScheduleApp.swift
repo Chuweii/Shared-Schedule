@@ -4,10 +4,13 @@ import SwiftUI
 struct Shared_ScheduleApp: App {
     @State private var themeManager = ThemeManager()
     @State private var languageManager = LanguageManager()
+    // Registers the MetricKit subscriber at process start; diagnostics
+    // for a crash are delivered by the OS on the next launch.
+    @State private var crashReporting = CrashReportingBootstrap()
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(uploadCrashReportsUseCase: crashReporting.uploadUseCase)
                 .environment(\.theme, themeManager.currentTheme)
                 .environment(themeManager)
                 .environment(languageManager)

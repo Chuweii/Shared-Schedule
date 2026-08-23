@@ -1352,4 +1352,53 @@ struct SupabaseIntegrationTests {
             }
         }
     }
+
+    // MARK: - Crash reports (write-only sink, insert-only RLS)
+
+    @Suite(.serialized) struct CrashReports {
+
+        private struct CrashReportRowProbe: Decodable { let id: UUID }
+
+        @Test("CRINT1. Insert own crash report while authenticated — succeeds")
+        func insertCrashReport_authenticatedSelf_succeeds() async throws {
+            // Given
+            try await IntegrationTestSupport.signIn(
+                email: IntegrationTestSupport.userAEmail
+            )
+            let uploader = SupabaseCrashReportUploader()
+
+            // When / Then: no throw
+            try await uploader.upload(CrashReport.sample(
+                jsonRepresentation: Data(
+                    #"{"crash":"crint1-\#(UUID().uuidString)"}"#.utf8
+                )
+            ))
+        }
+
+        @Test("CRINT2. Select crash_reports while authenticated — returns empty (no SELECT policy)")
+        func selectCrashReports_authenticated_returnsEmpty() async throws {
+            // Given: a user who just inserted a report
+            try await IntegrationTestSupport.signIn(
+                email: IntegrationTestSupport.userAEmail
+            )
+            let uploader = SupabaseCrashReportUploader()
+            try await uploader.upload(CrashReport.sample(
+                jsonRepresentation: Data(
+                    #"{"crash":"crint2-\#(UUID().uuidString)"}"#.utf8
+                )
+            ))
+
+            // When
+            let session = try await SupabaseClientProvider.auth.session
+            let rows: [CrashReportRowProbe] = try await SupabaseClientProvider
+                .database(accessToken: session.accessToken)
+                .from("crash_reports")
+                .select()
+                .execute()
+                .value
+
+            // Then
+            #expect(rows.isEmpty)
+        }
+    }
 }

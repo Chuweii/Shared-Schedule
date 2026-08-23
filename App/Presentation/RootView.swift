@@ -14,9 +14,11 @@ struct RootView: View {
     private let authSignUpClient: SupabaseAuthSignUpClient
     private let authSessionClient: SupabaseAuthSessionClient
     private let authPasswordResetClient: SupabaseAuthPasswordResetClient
+    private let uploadCrashReportsUseCase: any UploadCrashReportsUseCaseProtocol
     @State private var userProvider: SupabaseAuthCurrentUserProvider
 
-    init() {
+    init(uploadCrashReportsUseCase: any UploadCrashReportsUseCaseProtocol) {
+        self.uploadCrashReportsUseCase = uploadCrashReportsUseCase
         let repo = SupabaseUserProfileRepository()
         self.userProfileRepository = repo
         self.accountRepository = SupabaseAccountRepository()
@@ -64,6 +66,12 @@ struct RootView: View {
         }
         .task {
             await observeAuthState()
+        }
+        // Drain the local crash report queue once signed in. Re-runs on
+        // every flip into .authenticated; an empty queue is a no-op.
+        .task(id: authState) {
+            guard authState == .authenticated else { return }
+            await uploadCrashReportsUseCase.uploadPendingReports()
         }
         // Welcome-back toast over ContentView after an interactive
         // sign-in. The OTP flows and session restore never trigger
