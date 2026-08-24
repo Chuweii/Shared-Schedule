@@ -107,17 +107,19 @@ struct ClassicTheme: SemanticColorProtocol {
 
     // MARK: - System
 
+    // Light variants darkened for WCAG AA on white/gray50 (2026-08 a11y
+    // contrast pass); dark variants already passed on gray1000/gray800.
     var system: Color {
-        .adaptive(light: .blue500, dark: .blue500)
+        .adaptive(light: .blue600, dark: .blue500)
     }
     var system02: Color {
-        .adaptive(light: .blue500.opacity(0.1), dark: .blue500.opacity(0.2))
+        .adaptive(light: .blue600.opacity(0.1), dark: .blue500.opacity(0.2))
     }
     var success: Color {
-        .adaptive(light: .green500, dark: .green500)
+        .adaptive(light: .green600, dark: .green500)
     }
     var success02: Color {
-        .adaptive(light: .green500.opacity(0.1), dark: .green500.opacity(0.2))
+        .adaptive(light: .green600.opacity(0.1), dark: .green500.opacity(0.2))
     }
     var warning: Color {
         .adaptive(light: .orange500, dark: .orange500)
@@ -126,9 +128,9 @@ struct ClassicTheme: SemanticColorProtocol {
         .adaptive(light: .orange500.opacity(0.1), dark: .orange500.opacity(0.2))
     }
     var error: Color {
-        .adaptive(light: .red500, dark: .red500)
+        .adaptive(light: .red600, dark: .red500)
     }
     var error02: Color {
-        .adaptive(light: .red500.opacity(0.1), dark: .red500.opacity(0.2))
+        .adaptive(light: .red600.opacity(0.1), dark: .red500.opacity(0.2))
     }
 }

@@ -23,12 +23,15 @@ extension ShapeStyle where Self == Color {
     static var blue500: Color { .blue500 }
     static var blue50: Color { .blue50 }
     static var blue300: Color { .blue300 }
+    static var blue400: Color { .blue400 }
+    static var blue600: Color { .blue600 }
     static var blue700: Color { .blue700 }
     static var blue800: Color { .blue800 }
     static var blue900: Color { .blue900 }
     static var green500: Color { .green500 }
     static var green50: Color { .green50 }
     static var green300: Color { .green300 }
+    static var green400: Color { .green400 }
     static var green600: Color { .green600 }
     static var green700: Color { .green700 }
     static var green800: Color { .green800 }
@@ -37,8 +40,11 @@ extension ShapeStyle where Self == Color {
     static var orange50: Color { .orange50 }
     static var red500: Color { .red500 }
     static var red50: Color { .red50 }
+    static var red300: Color { .red300 }
+    static var red600: Color { .red600 }
     static var purple50: Color { .purple50 }
     static var purple300: Color { .purple300 }
+    static var purple400: Color { .purple400 }
     static var purple500: Color { .purple500 }
     static var purple700: Color { .purple700 }
     static var purple800: Color { .purple800 }
@@ -84,6 +90,12 @@ extension Color {
 
     static let blue300 = Color(hex: "#7FB5E8")
 
+    /// Accent on dark colored grounds (Ocean `system`) — ≥4.5:1 on blue700+.
+    static let blue400 = Color(hex: "#5CACFF")
+
+    /// Accent on light grounds (Classic `system`) — ≥4.5:1 on white/gray50.
+    static let blue600 = Color(hex: "#0066CC")
+
     static let blue700 = Color(hex: "#0E3759")
 
     static let blue800 = Color(hex: "#0A2540")
@@ -95,6 +107,10 @@ extension Color {
     static let green50 = Color(hex: "#F6FFF9")
 
     static let green300 = Color(hex: "#8FC5A8")
+
+    /// Accent on dark colored grounds (Forest `system`/`success`) —
+    /// ≥4.5:1 on green700+.
+    static let green400 = Color(hex: "#66D98E")
 
     static let green600 = Color(hex: "#0F7A3A")
 
@@ -112,9 +128,19 @@ extension Color {
 
     static let red50 = Color(hex: "#FFF5F3")
 
+    /// Error text on dark colored grounds (Forest/Midnight/Ocean) —
+    /// ≥4.5:1 on their bgPrimary variants.
+    static let red300 = Color(hex: "#F5A18F")
+
+    /// Error text on light grounds (Classic light) — ≥4.5:1 on white/gray50.
+    static let red600 = Color(hex: "#C43A2B")
+
     static let purple50 = Color(hex: "#F4F1FF")
 
     static let purple300 = Color(hex: "#B8A5F0")
+
+    /// Accent on dark colored grounds (Midnight `system`) — ≥4.5:1 on purple700+.
+    static let purple400 = Color(hex: "#AB96F9")
 
     static let purple500 = Color(hex: "#7C5CFF")
 

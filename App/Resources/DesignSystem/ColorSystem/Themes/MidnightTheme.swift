@@ -107,17 +107,19 @@ struct MidnightTheme: SemanticColorProtocol {
 
     // MARK: - System
 
+    // Accent/status text brightened for WCAG AA on the dark purple
+    // grounds (2026-08 a11y contrast pass).
     var system: Color {
-        .adaptive(light: .purple500, dark: .purple500)
+        .adaptive(light: .purple400, dark: .purple400)
     }
     var system02: Color {
-        .adaptive(light: .purple500.opacity(0.15), dark: .purple500.opacity(0.25))
+        .adaptive(light: .purple400.opacity(0.15), dark: .purple400.opacity(0.25))
     }
     var success: Color {
-        .adaptive(light: .green500, dark: .green500)
+        .adaptive(light: .green400, dark: .green400)
     }
     var success02: Color {
-        .adaptive(light: .green500.opacity(0.15), dark: .green500.opacity(0.2))
+        .adaptive(light: .green400.opacity(0.15), dark: .green400.opacity(0.2))
     }
     var warning: Color {
         .adaptive(light: .orange500, dark: .orange500)
@@ -126,9 +128,9 @@ struct MidnightTheme: SemanticColorProtocol {
         .adaptive(light: .orange500.opacity(0.15), dark: .orange500.opacity(0.2))
     }
     var error: Color {
-        .adaptive(light: .red500, dark: .red500)
+        .adaptive(light: .red300, dark: .red300)
     }
     var error02: Color {
-        .adaptive(light: .red500.opacity(0.15), dark: .red500.opacity(0.2))
+        .adaptive(light: .red300.opacity(0.15), dark: .red300.opacity(0.2))
     }
 }

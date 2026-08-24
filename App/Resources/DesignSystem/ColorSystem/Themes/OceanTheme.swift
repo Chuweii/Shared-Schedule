@@ -107,17 +107,19 @@ struct OceanTheme: SemanticColorProtocol {
 
     // MARK: - System
 
+    // Accent/status text brightened for WCAG AA on the dark blue
+    // grounds (2026-08 a11y contrast pass).
     var system: Color {
-        .adaptive(light: .blue500, dark: .blue500)
+        .adaptive(light: .blue400, dark: .blue400)
     }
     var system02: Color {
-        .adaptive(light: .blue500.opacity(0.15), dark: .blue500.opacity(0.25))
+        .adaptive(light: .blue400.opacity(0.15), dark: .blue400.opacity(0.25))
     }
     var success: Color {
-        .adaptive(light: .green500, dark: .green500)
+        .adaptive(light: .green400, dark: .green400)
     }
     var success02: Color {
-        .adaptive(light: .green500.opacity(0.15), dark: .green500.opacity(0.2))
+        .adaptive(light: .green400.opacity(0.15), dark: .green400.opacity(0.2))
     }
     var warning: Color {
         .adaptive(light: .orange500, dark: .orange500)
@@ -126,9 +128,9 @@ struct OceanTheme: SemanticColorProtocol {
         .adaptive(light: .orange500.opacity(0.15), dark: .orange500.opacity(0.2))
     }
     var error: Color {
-        .adaptive(light: .red500, dark: .red500)
+        .adaptive(light: .red300, dark: .red300)
     }
     var error02: Color {
-        .adaptive(light: .red500.opacity(0.15), dark: .red500.opacity(0.2))
+        .adaptive(light: .red300.opacity(0.15), dark: .red300.opacity(0.2))
     }
 }

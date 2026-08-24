@@ -107,17 +107,20 @@ struct ForestTheme: SemanticColorProtocol {
 
     // MARK: - System
 
+    // Accent/status text brightened for WCAG AA on the dark green
+    // grounds (2026-08 a11y contrast pass) — green600 links measured
+    // 1.80:1 on green700.
     var system: Color {
-        .adaptive(light: .green600, dark: .green600)
+        .adaptive(light: .green400, dark: .green400)
     }
     var system02: Color {
-        .adaptive(light: .green600.opacity(0.15), dark: .green600.opacity(0.25))
+        .adaptive(light: .green400.opacity(0.15), dark: .green400.opacity(0.25))
     }
     var success: Color {
-        .adaptive(light: .green500, dark: .green500)
+        .adaptive(light: .green400, dark: .green400)
     }
     var success02: Color {
-        .adaptive(light: .green500.opacity(0.15), dark: .green500.opacity(0.2))
+        .adaptive(light: .green400.opacity(0.15), dark: .green400.opacity(0.2))
     }
     var warning: Color {
         .adaptive(light: .orange500, dark: .orange500)
@@ -126,9 +129,9 @@ struct ForestTheme: SemanticColorProtocol {
         .adaptive(light: .orange500.opacity(0.15), dark: .orange500.opacity(0.2))
     }
     var error: Color {
-        .adaptive(light: .red500, dark: .red500)
+        .adaptive(light: .red300, dark: .red300)
     }
     var error02: Color {
-        .adaptive(light: .red500.opacity(0.15), dark: .red500.opacity(0.2))
+        .adaptive(light: .red300.opacity(0.15), dark: .red300.opacity(0.2))
     }
 }
