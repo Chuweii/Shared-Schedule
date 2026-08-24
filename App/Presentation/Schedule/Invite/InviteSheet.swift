@@ -4,6 +4,7 @@ import UIKit
 struct InviteSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
+    @Environment(ThemeManager.self) private var themeManager
     @State var viewModel: InviteSheetViewModel
     @State private var sensoryToken = 0
     @State private var showCopiedToast = false
@@ -11,6 +12,7 @@ struct InviteSheet: View {
     var body: some View {
         NavigationStack {
             content
+                .background(theme.bgPrimary)
                 .navigationTitle(Text("邀請學生加入「\(viewModel.schedule.title)」"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -64,8 +66,10 @@ struct InviteSheet: View {
         VStack(spacing: 16) {
             ContentUnavailableView {
                 Label("還沒有邀請碼", systemImage: "person.crop.circle.badge.plus")
+                    .foregroundStyle(theme.textPrimary)
             } description: {
                 Text("產生一個邀請碼分享給學生，他們可以用這組碼加入這份課表")
+                    .foregroundStyle(theme.textSecondary)
             }
             generateButton
             if let error = viewModel.inlineError {
@@ -84,6 +88,7 @@ struct InviteSheet: View {
             // Text (not String(localized:)) defers resolution to render
             // time so the message can follow the in-app language.
             Label { Text(message) } icon: { Image(systemName: "exclamationmark.triangle") }
+                .foregroundStyle(theme.textPrimary)
         } actions: {
             Button {
                 Task { await viewModel.onAppear() }
@@ -116,8 +121,10 @@ struct InviteSheet: View {
 
             List(viewModel.invitations, id: \.id) { invitation in
                 row(invitation)
+                    .listRowBackground(theme.bgPrimary)
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 

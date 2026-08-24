@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScheduleCalendarView: View {
     @Environment(\.theme) private var theme
+    @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleCalendarViewModel
     @State private var showInviteSheet = false
     @State private var pendingSlot: ComputedSlot?
@@ -67,6 +68,7 @@ struct ScheduleCalendarView: View {
                 Spacer(minLength: 20)
             }
         }
+        .background(theme.bgPrimary)
         .navigationTitle(viewModel.schedule.title)
         .toolbar {
             if isOwner {

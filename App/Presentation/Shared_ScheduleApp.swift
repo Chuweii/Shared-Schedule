@@ -17,6 +17,10 @@ struct Shared_ScheduleApp: App {
                 // Follow System pins nothing stale: iOS relaunches the
                 // app when the device language changes.
                 .environment(\.locale, languageManager.overrideLocale ?? Locale.current)
+                // Colored themes are dark-ground designs: declare the
+                // window dark so system chrome (nav titles, alerts,
+                // Form controls) colors itself correctly on them.
+                .preferredColorScheme(themeManager.current.preferredColorScheme)
         }
     }
 }

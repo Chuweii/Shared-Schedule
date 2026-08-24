@@ -39,6 +39,10 @@ struct ScheduleListView: View {
                 listView
             }
         }
+        // List/Form draw their own system backgrounds that ignore the
+        // theme environment — colored themes (white textPrimary) need
+        // the theme ground behind every screen, not just ScrollViews.
+        .background(theme.bgPrimary)
         // Resolved as String (not LocalizedStringKey) so the bar title
         // re-pushes when the in-app language changes — the bar only
         // refreshes on value change, and a key compares equal across
@@ -119,8 +123,10 @@ struct ScheduleListView: View {
     private var emptyStateView: some View {
         ContentUnavailableView {
             Label("還沒有課表", systemImage: "calendar.badge.plus")
+                .foregroundStyle(theme.textPrimary)
         } description: {
             Text("建立自己的課表，或輸入邀請碼加入別人的")
+                .foregroundStyle(theme.textSecondary)
         } actions: {
             VStack(spacing: 12) {
                 Button {
@@ -152,6 +158,7 @@ struct ScheduleListView: View {
     private var fullScreenErrorView: some View {
         ContentUnavailableView {
             Label("scheduleListLoadError", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(theme.textPrimary)
         } actions: {
             Button {
                 Task { await viewModel.onAppear() }
@@ -171,7 +178,7 @@ struct ScheduleListView: View {
     private var listView: some View {
         List {
             if !viewModel.ownedSchedules.isEmpty || viewModel.ownedLoadError != nil {
-                Section("我的課表") {
+                Section {
                     if let err = viewModel.ownedLoadError {
                         inlineRetryRow(message: err) {
                             await viewModel.retryOwned()
@@ -181,10 +188,14 @@ struct ScheduleListView: View {
                             scheduleNavigationRow(schedule)
                         }
                     }
+                } header: {
+                    Text("我的課表")
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.bgSecondary)
             }
             if !viewModel.joinedSchedules.isEmpty || viewModel.joinedLoadError != nil {
-                Section("我加入的") {
+                Section {
                     if let err = viewModel.joinedLoadError {
                         inlineRetryRow(message: err) {
                             await viewModel.retryJoined()
@@ -194,9 +205,14 @@ struct ScheduleListView: View {
                             scheduleNavigationRow(schedule)
                         }
                     }
+                } header: {
+                    Text("我加入的")
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.bgSecondary)
             }
         }
+        .scrollContentBackground(.hidden)
         .refreshable { await viewModel.onAppear() }
     }
 

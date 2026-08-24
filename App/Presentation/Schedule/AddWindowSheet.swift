@@ -2,26 +2,35 @@ import SwiftUI
 
 struct AddWindowSheet: View {
     @Environment(\.theme) private var theme
+    @Environment(ThemeManager.self) private var themeManager
     @Bindable var viewModel: ScheduleDetailViewModel
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("開始時間") {
+                Section {
                     DatePicker(
                         "開始",
                         selection: $viewModel.newWindowStart,
                         displayedComponents: [.date, .hourAndMinute]
                     )
+                } header: {
+                    Text("開始時間")
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.bgSecondary)
 
-                Section("結束時間") {
+                Section {
                     DatePicker(
                         "結束",
                         selection: $viewModel.newWindowEnd,
                         displayedComponents: [.date, .hourAndMinute]
                     )
+                } header: {
+                    Text("結束時間")
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.bgSecondary)
 
                 if let error = viewModel.inlineError {
                     Section {
@@ -29,8 +38,14 @@ struct AddWindowSheet: View {
                             .font(.caption)
                             .foregroundStyle(theme.error)
                     }
+                    .listRowBackground(theme.bgSecondary)
                 }
             }
+            // Same rationale as CreateScheduleSheet: Form chrome ignores
+            // the theme environment.
+            .foregroundStyle(theme.textPrimary)
+            .scrollContentBackground(.hidden)
+            .background(theme.bgPrimary)
             .navigationTitle("新增時段")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

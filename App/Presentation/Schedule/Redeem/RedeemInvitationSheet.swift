@@ -4,6 +4,7 @@ struct RedeemInvitationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
     @Environment(\.locale) private var locale
+    @Environment(ThemeManager.self) private var themeManager
     @State var viewModel: RedeemInvitationViewModel
     @State private var sensoryToken = 0
     @FocusState private var inputFocused: Bool
@@ -11,6 +12,8 @@ struct RedeemInvitationSheet: View {
     var body: some View {
         NavigationStack {
             content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(theme.bgPrimary)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

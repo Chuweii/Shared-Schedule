@@ -3,6 +3,7 @@ import SwiftUI
 struct ScheduleDetailView: View {
     @Environment(\.theme) private var theme
     @Environment(\.locale) private var locale
+    @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel: ScheduleDetailViewModel
 
     init(schedule: Schedule, dependencies: AppDependencies) {
@@ -27,6 +28,7 @@ struct ScheduleDetailView: View {
                 windowListView
             }
         }
+        .background(theme.bgPrimary)
         .navigationTitle(viewModel.schedule.title)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -45,8 +47,10 @@ struct ScheduleDetailView: View {
     private var emptyStateView: some View {
         ContentUnavailableView {
             Label("還沒有時段", systemImage: "clock.badge.plus")
+                .foregroundStyle(theme.textPrimary)
         } description: {
             Text("新增可預約時段，讓學生知道你何時有空")
+                .foregroundStyle(theme.textSecondary)
         } actions: {
             Button {
                 viewModel.isAddWindowSheetPresented = true
@@ -77,8 +81,11 @@ struct ScheduleDetailView: View {
             } header: {
                 Text("每堂最短 \(Int(viewModel.schedule.minWindowDuration / 60)) 分鐘")
                     .font(.caption)
+                    .foregroundStyle(theme.textSecondary)
             }
+            .listRowBackground(theme.bgSecondary)
         }
+        .scrollContentBackground(.hidden)
     }
 
     private func windowRow(_ window: AvailabilityWindow) -> some View {

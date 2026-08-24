@@ -3,6 +3,7 @@ import SwiftUI
 struct CreateScheduleSheet: View {
     @Environment(\.theme) private var theme
     @Environment(\.locale) private var locale
+    @Environment(ThemeManager.self) private var themeManager
     @Bindable var viewModel: ScheduleListViewModel
 
     private let durationOptions: [TimeInterval] = [
@@ -21,26 +22,34 @@ struct CreateScheduleSheet: View {
                             .foregroundStyle(theme.error)
                     }
                 }
+                .listRowBackground(theme.bgSecondary)
 
-                Section("最短時段長度") {
+                Section {
                     Picker("最短時段長度", selection: $viewModel.minDurationDraft) {
                         ForEach(durationOptions, id: \.self) { duration in
                             Text("\(Int(duration / 60)) 分鐘").tag(duration)
                         }
                     }
+                } header: {
+                    Text("最短時段長度")
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.bgSecondary)
 
                 Section {
                     weekdayPicker
                 } header: {
                     Text("可預約日期")
+                        .foregroundStyle(theme.textSecondary)
                 } footer: {
                     Text("建立後可針對每天細調時段")
                         .font(.caption2)
+                        .foregroundStyle(theme.textCaption)
                 }
+                .listRowBackground(theme.bgSecondary)
 
                 if !viewModel.selectedWeekdays.isEmpty {
-                    Section("可預約時間") {
+                    Section {
                         DatePicker(
                             "開始",
                             selection: $viewModel.ruleStartTime,
@@ -51,9 +60,19 @@ struct CreateScheduleSheet: View {
                             selection: $viewModel.ruleEndTime,
                             displayedComponents: .hourAndMinute
                         )
+                    } header: {
+                        Text("可預約時間")
+                            .foregroundStyle(theme.textSecondary)
                     }
+                    .listRowBackground(theme.bgSecondary)
                 }
             }
+            // System Form chrome (backgrounds, label colors) ignores the
+            // theme environment — hide it and restate through tokens so
+            // the colored themes' white textPrimary stays readable.
+            .foregroundStyle(theme.textPrimary)
+            .scrollContentBackground(.hidden)
+            .background(theme.bgPrimary)
             .navigationTitle("新增課表")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
