@@ -125,6 +125,7 @@ struct InviteSheet: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .padding(.top, 12)
         }
     }
 
