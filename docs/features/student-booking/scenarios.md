@@ -194,6 +194,10 @@
 **When** bookSlot(targetSlot)
 **Then** inlineError 設定、slot 維持 `.available`、myBookings 不變
 
+> Slice 3 起，`.slotTaken` 後會靜默重新載入預約狀態。本測試中他人預約
+> 為空，故刷新後 slot 仍是 `.available`；有他人預約資料時的行為見
+> BCV17。
+
 ### BCV5
 **Given** 已有一筆 mineBooked 的 booking
 **When** cancelBooking(bookingID)
@@ -328,3 +332,69 @@ myBookings 為空
 | **Slice 2 合計** | **15** |
 
 合計（Slice 1 + 2）：49
+
+---
+
+## Slice 3 增量（2026-10-04 加入）
+
+> 預約狀態刷新。BCV12 起算，接續 Slice 2 的 BCV11。Fakes 沿用
+> `FakeListAllBookingsForOwnerUseCase`、`FakeListMyBookingsUseCase`、
+> `FakeListOthersBookingsUseCase`、`FakeCreateBookingUseCase`；
+> 「另一台裝置／另一位學生的操作」在測試中以「進頁面後改變 fake 回傳值」
+> 模擬。
+
+### ViewModel — ScheduleCalendarViewModel 增量（6）
+
+#### BCV12 老師下拉刷新看到新預約
+**Given** 老師正在看自己的課表，某天 09:00 原本是空的
+**And** 學生剛在另一台裝置預約了該天 09:00
+**When** 老師在課表頁往下拉
+**Then** 09:00 顯示該學生的名字
+
+#### BCV13 學生下拉刷新看到別人的新預約
+**Given** 學生正在看已加入的課表，某天 09:00 顯示可預約
+**And** 另一位學生剛預約了該天 09:00
+**When** 學生往下拉
+**Then** 09:00 顯示「已被預約」（不顯示對方名字）
+
+#### BCV14 學生下拉刷新看到被取消的時段恢復可預約
+**Given** 學生看到某天 14:00 是「已被預約」
+**And** 預約的那位學生剛取消了
+**When** 學生往下拉
+**Then** 14:00 變回可預約
+
+#### BCV15 下拉刷新失敗時保留原畫面並提示
+**Given** 使用者正在看課表，畫面上已有預約資料，網路斷了
+**When** 往下拉
+**Then** 畫面維持刷新前的預約狀態（不會整片變空）
+**And** 顯示「無法更新預約狀態，請稍後再試」
+
+#### BCV16 下拉刷新成功會清掉舊的錯誤提示
+**Given** 畫面上有上一次操作留下的錯誤提示
+**When** 往下拉且成功
+**Then** 錯誤提示消失
+
+#### BCV17 預約時被搶先，該時段立刻顯示已被預約
+**Given** 學生看到某天 11:00 可預約，但別人剛好先訂走
+**When** 學生按預約並確認
+**Then** 顯示「已被預約，請選其他時段」
+**And** 11:00 立刻變成「已被預約」
+
+### Refresh UI（手動 e2e，1）
+
+> 依現行慣例 SwiftUI view 不寫自動化測試，以模擬器手動驗收。
+
+#### RUI1 App 回前景自動刷新
+**Given** 老師停在課表頁，切到其他 App
+**And** 這段時間學生預約了某時段
+**When** 老師切回本 App
+**Then** 不用任何操作，該時段已顯示學生名字
+**And** 若載入失敗不顯示錯誤（與進頁面載入一致）
+
+## Test 數量（Slice 3）
+
+| 層 | 數量 |
+|---|---|
+| ViewModel (BCV12–17) | 6 |
+| UI（RUI1） | 手動 |
+| **Slice 3 自動化合計** | **6** |

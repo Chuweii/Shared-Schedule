@@ -3,6 +3,7 @@ import SwiftUI
 struct ScheduleCalendarView: View {
     @Environment(\.theme) private var theme
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: ScheduleCalendarViewModel
     @State private var showInviteSheet = false
     @State private var pendingSlot: ComputedSlot?
@@ -68,6 +69,7 @@ struct ScheduleCalendarView: View {
                 Spacer(minLength: 20)
             }
         }
+        .refreshable { await viewModel.refresh() }
         .background(theme.bgPrimary)
         .navigationTitle(viewModel.schedule.title)
         .toolbar {
@@ -120,6 +122,14 @@ struct ScheduleCalendarView: View {
             }
         }
         .task { await viewModel.onAppear() }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Bookings may have changed while the app was backgrounded.
+            // Initial appear is already `.active`, so this never doubles
+            // up with `.task`.
+            if newPhase == .active {
+                Task { await viewModel.loadBookings() }
+            }
+        }
     }
 
     /// `Text` (LocalizedStringKey interpolation) so the title follows

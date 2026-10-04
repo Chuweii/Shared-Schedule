@@ -506,4 +506,162 @@ struct ScheduleCalendarViewModelTests {
         let threePMRow = try #require(presented.first { $0.slot.start == monday.addingTimeInterval(15 * 3600) })
         #expect(threePMRow.state == .bookedByOther)
     }
+
+    // MARK: - Slice 3 — Refresh
+
+    // MARK: - BCV12
+
+    @Test("BCV12. 老師下拉刷新看到新預約")
+    func refresh_ownerMode_newBookingAppears_slotShowsStudentName() async throws {
+        // Given: owner is viewing Monday with 09:00 empty
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let (vm, ownerListFake) = makeOwnerSUT(schedule: schedule)
+        await vm.onAppear()
+        vm.selectDate(monday)
+        // And: a student books 09:00 from another device
+        let booking = try Self.booking(at: mondayNineAM, scheduleID: schedule.id)
+        ownerListFake.resultToReturn = [OwnerBooking(
+            booking: booking,
+            studentEmail: "test-student-c@example.com",
+            studentDisplayName: "Test Student C"
+        )]
+
+        // When
+        await vm.refresh()
+
+        // Then
+        #expect(ownerListFake.callCount == 2)
+        let presented = vm.presentedSlotsForSelectedDate
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .bookedByStudent(
+            displayName: "Test Student C",
+            email: "test-student-c@example.com"
+        ))
+    }
+
+    // MARK: - BCV13
+
+    @Test("BCV13. 學生下拉刷新看到別人的新預約")
+    func refresh_studentMode_otherStudentBooks_slotShowsBookedByOther() async throws {
+        // Given: student sees 09:00 as available
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let (vm, _, _, _, othersFake) = makeStudentSUT(schedule: schedule)
+        await vm.onAppear()
+        vm.selectDate(monday)
+        // And: another student books 09:00
+        othersFake.resultToReturn = [try Self.bookedSlot(at: mondayNineAM)]
+
+        // When
+        await vm.refresh()
+
+        // Then
+        #expect(othersFake.callCount == 2)
+        let presented = vm.presentedSlotsForSelectedDate
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .bookedByOther)
+    }
+
+    // MARK: - BCV14
+
+    @Test("BCV14. 學生下拉刷新看到被取消的時段恢復可預約")
+    func refresh_studentMode_otherStudentCancels_slotBecomesAvailable() async throws {
+        // Given: student sees 14:00 as booked by someone else
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayTwoPM = monday.addingTimeInterval(14 * 3600)
+        let (vm, _, _, _, othersFake) = makeStudentSUT(
+            schedule: schedule,
+            othersBookings: [try Self.bookedSlot(at: mondayTwoPM)]
+        )
+        await vm.onAppear()
+        vm.selectDate(monday)
+        // And: that student cancels
+        othersFake.resultToReturn = []
+
+        // When
+        await vm.refresh()
+
+        // Then
+        let presented = vm.presentedSlotsForSelectedDate
+        let twoPMRow = try #require(presented.first { $0.slot.start == mondayTwoPM })
+        #expect(twoPMRow.state == .available)
+    }
+
+    // MARK: - BCV15
+
+    @Test("BCV15. 下拉刷新失敗時保留原畫面並提示")
+    func refresh_fails_keepsPreviousStateAndShowsError() async throws {
+        // Given: student already sees 09:00 as booked by someone else
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayNineAM = monday.addingTimeInterval(9 * 3600)
+        let (vm, _, _, _, othersFake) = makeStudentSUT(
+            schedule: schedule,
+            othersBookings: [try Self.bookedSlot(at: mondayNineAM)]
+        )
+        await vm.onAppear()
+        vm.selectDate(monday)
+        // And: the network goes down
+        othersFake.errorToThrow = .persistenceFailure
+
+        // When
+        await vm.refresh()
+
+        // Then
+        let presented = vm.presentedSlotsForSelectedDate
+        let nineAMRow = try #require(presented.first { $0.slot.start == mondayNineAM })
+        #expect(nineAMRow.state == .bookedByOther)
+        #expect(vm.inlineError?.key == "calendarRefreshFailed")
+    }
+
+    // MARK: - BCV16
+
+    @Test("BCV16. 下拉刷新成功會清掉舊的錯誤提示")
+    func refresh_succeeds_clearsPreviousInlineError() async throws {
+        // Given: a previous booking attempt left an error on screen
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayTenAM = monday.addingTimeInterval(10 * 3600)
+        let (vm, _, createFake, _, _) = makeStudentSUT(schedule: schedule)
+        createFake.errorToThrow = .persistenceFailure
+        await vm.onAppear()
+        vm.selectDate(monday)
+        await vm.bookSlot(ComputedSlot(start: mondayTenAM, end: mondayTenAM.addingTimeInterval(3600)))
+        #expect(vm.inlineError != nil)
+
+        // When
+        await vm.refresh()
+
+        // Then
+        #expect(vm.inlineError == nil)
+    }
+
+    // MARK: - BCV17
+
+    @Test("BCV17. 預約時被搶先，該時段立刻顯示已被預約")
+    func bookSlot_slotTaken_reloadsAndShowsBookedByOther() async throws {
+        // Given: student sees 11:00 as available, but someone else just took it
+        let schedule = try makeScheduleWithMondayRule()
+        let monday = Self.date(year: 2026, month: 4, day: 13)
+        let mondayElevenAM = monday.addingTimeInterval(11 * 3600)
+        let (vm, _, createFake, _, othersFake) = makeStudentSUT(schedule: schedule)
+        await vm.onAppear()
+        vm.selectDate(monday)
+        othersFake.resultToReturn = [try Self.bookedSlot(at: mondayElevenAM)]
+        createFake.errorToThrow = .slotTaken
+
+        // When
+        await vm.bookSlot(ComputedSlot(start: mondayElevenAM, end: mondayElevenAM.addingTimeInterval(3600)))
+
+        // Then
+        #expect(vm.inlineError != nil)
+        #expect(othersFake.callCount == 2)
+        let presented = vm.presentedSlotsForSelectedDate
+        let elevenAMRow = try #require(presented.first { $0.slot.start == mondayElevenAM })
+        #expect(elevenAMRow.state == .bookedByOther)
+    }
 }

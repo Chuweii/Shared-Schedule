@@ -281,6 +281,28 @@
         }
       }
     },
+    "calendarRefreshFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update bookings. Please try again later."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約状況を更新できませんでした。しばらくしてからもう一度お試しください。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法更新預約狀態，請稍後再試"
+          }
+        }
+      }
+    },
     "forgotPasswordLink": {
       "localizations": {
         "en": {

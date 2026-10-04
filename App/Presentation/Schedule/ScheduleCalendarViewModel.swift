@@ -92,46 +92,70 @@ final class ScheduleCalendarViewModel {
         selectedDaySlots = []
     }
 
+    /// Silent reload — used on appear, on return to foreground, and after
+    /// a `.slotTaken` booking failure. Failures never touch `inlineError`.
     func loadBookings() async {
-        if isOwner {
-            await loadOwnerBookings()
-        } else {
-            await loadMyBookings()
-            await loadOthersBookings()
+        _ = await fetchBookings()
+    }
+
+    /// Pull-to-refresh. Unlike `loadBookings()`, a failure is surfaced
+    /// because the user explicitly asked for fresh data.
+    func refresh() async {
+        inlineError = nil
+        let succeeded = await fetchBookings()
+        if !succeeded {
+            inlineError = "calendarRefreshFailed"
         }
     }
 
-    private func loadMyBookings() async {
-        guard let listMyBookingsUseCase else { return }
+    /// Returns `false` if any loader failed. A failed loader keeps its
+    /// previous data, so a failed refresh never blanks the calendar.
+    private func fetchBookings() async -> Bool {
+        if isOwner {
+            return await loadOwnerBookings()
+        }
+        let mineLoaded = await loadMyBookings()
+        let othersLoaded = await loadOthersBookings()
+        return mineLoaded && othersLoaded
+    }
+
+    private func loadMyBookings() async -> Bool {
+        guard let listMyBookingsUseCase else { return true }
         do {
             myBookings = try await listMyBookingsUseCase.listMyBookings(scheduleID: schedule.id)
+            return true
         } catch {
             // Calendar still renders without my-bookings overlay; user can
-            // re-enter the view to retry. We deliberately don't surface to
-            // inlineError here so the slot-list area isn't hijacked on entry.
+            // pull to refresh to retry. Callers decide whether to surface
+            // the failure so the slot-list area isn't hijacked on entry.
+            return false
         }
     }
 
-    private func loadOwnerBookings() async {
-        guard let listAllBookingsForOwnerUseCase else { return }
+    private func loadOwnerBookings() async -> Bool {
+        guard let listAllBookingsForOwnerUseCase else { return true }
         do {
             ownerBookings = try await listAllBookingsForOwnerUseCase.listAllBookingsForOwner(
                 scheduleID: schedule.id
             )
+            return true
         } catch {
-            // Same silent-on-load policy as loadMyBookings.
+            // Same policy as loadMyBookings.
+            return false
         }
     }
 
-    private func loadOthersBookings() async {
-        guard let listOthersBookingsUseCase else { return }
+    private func loadOthersBookings() async -> Bool {
+        guard let listOthersBookingsUseCase else { return true }
         do {
             othersBookings = try await listOthersBookingsUseCase.listOthersBookings(
                 scheduleID: schedule.id
             )
+            return true
         } catch {
-            // Same silent-on-load policy as loadMyBookings — rows fall
-            // back to .available rather than blocking the slot list.
+            // Same policy as loadMyBookings — rows fall back to their
+            // previous state rather than blocking the slot list.
+            return false
         }
     }
 
@@ -146,6 +170,11 @@ final class ScheduleCalendarViewModel {
             myBookings.append(booking)
         } catch {
             inlineError = Self.errorMessage(for: error)
+            if case .slotTaken = error {
+                // Someone else got there first — reload so the slot shows
+                // as booked instead of staying tappable.
+                await loadBookings()
+            }
         }
     }
 

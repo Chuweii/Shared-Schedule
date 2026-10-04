@@ -206,3 +206,63 @@ bookedByOther row：無 tap callback、無 button。`onTapAvailable` 只接
 - Real-time 同步（websocket）→ Phase 4+；目前 polling-on-appear
 - 「有多少 slot 可預約」的密度 badge → Phase 4+
 - Reschedule（直接改時間）→ Phase 4+；MVP 用「先取消再預約」
+
+---
+
+## Slice 3 — 預約狀態刷新（2026-10-04 加入）
+
+### Why
+
+手動 e2e 發現：學生預約了老師的課，老師停在課表頁上看不到這筆新預約，
+要退出再進來才會出現。原因是 calendar 只在進頁面時載入一次預約資料
+（polling-on-appear），之後沒有任何重新載入的途徑。學生端同理：停在
+畫面上看不到別人剛訂走的時段、也看不到別人剛取消而釋出的時段。
+
+### What
+
+三種刷新方式，皆只重新載入**預約狀態**，後端、RLS、Usecase 都不變：
+
+| 方式 | 觸發 | 失敗時 |
+|---|---|---|
+| 下拉刷新 | 使用者在課表頁往下拉 | 保留原畫面，顯示「無法更新預約狀態，請稍後再試」 |
+| 回前景自動刷新 | App 從背景切回前景且停在課表頁 | 靜默（與進頁面載入一致，不打擾） |
+| 搶位失敗自動刷新 | 學生預約時收到「已被預約」 | 靜默；錯誤訊息仍是「已被預約，請選其他時段」 |
+
+老師與學生兩種視角都適用（老師刷新 owner bookings；學生刷新自己的與
+他人的 bookings）。下拉刷新成功會清掉畫面上殘留的舊錯誤提示。
+
+### 不做的事（Out of Scope）
+
+- **即時推播（Supabase Realtime）**：需新增 `Realtime` package
+  product（專案設定變更）；且學生依 RLS 讀不到他人 bookings row，
+  `postgres_changes` 推不到學生端，需另行設計 broadcast。等上架後有
+  實際需求再評估。
+- **定時輪詢**：耗電、API 次數多；下拉＋回前景已涵蓋主要情境。
+- **刷新課表本身（老師修改規則）**：schedule 是進頁面時帶入的值物件，
+  本 slice 只刷新預約狀態。
+
+### Scenarios 摘要
+
+完整 Given / When / Then 見 [`scenarios.md`](scenarios.md#slice-3-增量2026-10-04-加入)。
+
+| ID | 情境 | 層 |
+|---|---|---|
+| BCV12 | 老師下拉刷新看到新預約 | ViewModel |
+| BCV13 | 學生下拉刷新看到別人的新預約 | ViewModel |
+| BCV14 | 學生下拉刷新看到被取消的時段恢復可預約 | ViewModel |
+| BCV15 | 下拉刷新失敗時保留原畫面並提示 | ViewModel |
+| BCV16 | 下拉刷新成功會清掉舊的錯誤提示 | ViewModel |
+| BCV17 | 預約時被搶先，該時段立刻顯示已被預約 | ViewModel |
+| RUI1 | App 回前景自動刷新 | 手動 e2e |
+
+### Technical Notes
+
+- `ScheduleCalendarViewModel` 新增 `refresh()`（下拉用，失敗會設
+  `inlineError`）；既有 `loadBookings()` 維持靜默語意，供 `onAppear`、
+  回前景、搶位失敗使用。
+- 各 loader 失敗時**不覆寫**既有資料，所以刷新失敗不會讓畫面變空。
+- 回前景：View 以 `@Environment(\.scenePhase)` 觀察，變成 `.active`
+  時呼叫 `loadBookings()`。首次進頁面時 scenePhase 已是 `.active`、
+  不會觸發，不會與 `.task` 重複載入。
+- 已知小限制（接受）：刷新請求在途中時若使用者剛好完成一筆預約，刷新
+  結果可能短暫蓋掉這筆，下次刷新即修正。
